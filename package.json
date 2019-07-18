@@ -10,7 +10,10 @@
   "dependencies": {
     "react": "16.8.6",
     "react-native": "0.60.3",
-    "react-native-webrtc": "^1.69.2"
+    "react-native-webrtc": "^1.69.2",
+    "reconnecting-websocket": "^4.1.10",
+    "socket.io": "^2.2.0",
+    "socket.io-client": "^2.2.0"
   },
   "devDependencies": {
     "@babel/core": "^7.5.5",
