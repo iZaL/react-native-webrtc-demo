@@ -1,413 +1,438 @@
-import React from 'react';
-import SocketIO from 'socket.io-client'
-import WebSocketClient from 'reconnecting-websocket'
+'use strict';
+
+import React, {Component} from 'react';
+import {
+  AppRegistry,
+  StyleSheet,
+  Text,
+  TouchableHighlight,
+  View,
+  TextInput,
+  Platform,
+} from 'react-native';
+
+import io from 'socket.io-client';
+
+const socket = io.connect(
+  // 'http://192.168.10.155:4443',
+  'http://192.168.8.103:4443',
+  {transports: ['websocket']},
+);
 
 import {
   RTCPeerConnection,
+  RTCMediaStream,
   RTCIceCandidate,
   RTCSessionDescription,
   RTCView,
-  MediaStream,
   MediaStreamTrack,
   mediaDevices,
-} from 'react-native-webrtc'
-import { StyleSheet, Text, View, TouchableOpacity, Dimensions } from 'react-native';
+} from 'react-native-webrtc';
 
-const dimensions = Dimensions.get('window')
+const configuration = {iceServers: [{url: 'stun:stun.l.google.com:19302'}]};
 
-const HOST = process.env.HOST || 'ws://172.20.1.150:8000';
-const isFront = true // Use Front camera?
-const DEFAULT_ICE = {
-// we need to fork react-native-webrtc for relay-only to work.
-//  iceTransportPolicy: "relay",
-  iceServers: [
-    // {
-    //   urls: 'turn:s2.xirsys.com:80?transport=tcp',
-    //   username: '8a63bcac-e16a-11e7-a86e-a62bc0457e71',
-    //   credential: '8a63bdd8-e16a-11e7-b7e2-48f12b7ac2d8'
-    // },
-    {
-      urls: 'turn:turn.msgsafe.io:443?transport=tcp',
-      username: 'a9a2b514',
-      credential: '00163e7826d6'
-    },
-    /* Native libraries DO NOT fail over correctly.
-    {
-      urls: 'turn:turn.msgsafe.io:443',
-      username: 'a9a2b514',
-      credential: '00163e7826d6'
-    }
-    */
-  ]
-}
+const pcPeers = {};
+let localStream;
 
-export default class App extends React.Component {
+function getLocalStream(isFront, callback) {
+  let videoSourceId;
 
-  constructor(props) {
-    super(props)
-    this.handleConnect = this.handleConnect.bind(this)
-    this.on_ICE_Connection_State_Change = this.on_ICE_Connection_State_Change.bind(this)
-    this.on_Add_Stream = this.on_Add_Stream.bind(this)
-    this.on_ICE_Candiate = this.on_ICE_Candiate.bind(this)
-    this.sendMessage = this.sendMessage.bind(this)
-    this.on_Offer_Received = this.on_Offer_Received.bind(this)
-    this.on_Answer_Received = this.on_Answer_Received.bind(this)
-    this.setupWebRTC = this.setupWebRTC.bind(this)
-    this.handleAnswer = this.handleAnswer.bind(this)
-    this.on_Remote_ICE_Candidate = this.on_Remote_ICE_Candidate.bind(this)
-
-    this.state = {
-      connected: false,
-      ice_connection_state: '',
-      pendingCandidates: []
-    }
-  }
-
-  render() {
-    return (
-        <View style={styles.container}>
-          <View style={styles.video}>
-            <View style={styles.callerVideo}>
-              <View style={styles.videoWidget}>
-                { this.state.localStreamURL &&
-                <RTCView streamURL={this.state.localStreamURL} style={styles.rtcView}/>
-                }
-              </View>
-            </View>
-            <View style={styles.calleeVideo}>
-              <View style={styles.videoWidget}>
-                { this.state.remoteStreamURL &&
-                <RTCView streamURL={this.state.remoteStreamURL} style={styles.rtcView}/>
-                }
-              </View>
-            </View>
-          </View>
-          <View style={ this.state.connected ? styles.onlineCircle : styles.offlineCircle}/>
-          <View style={styles.bottomView}>
-            <TouchableOpacity onPress={this.handleConnect} disabled={this.state.offer_received}>
-              <Text style={styles.connect}>
-                Connect
-              </Text>
-            </TouchableOpacity>
-            { // Offer received and offer not answered
-              (this.state.offer_received && !this.state.offer_answered) &&
-              <TouchableOpacity onPress={this.handleAnswer}>
-                <Text style={styles.connect}>
-                  Answer
-                </Text>
-              </TouchableOpacity>
-            }
-          </View>
-        </View>
-    );
-  }
-
-  async setupWebRTC() {
-    const self = this;
-    const peer = new RTCPeerConnection(DEFAULT_ICE)
-    peer.oniceconnectionstatechange = this.on_ICE_Connection_State_Change
-    peer.onaddstream = this.on_Add_Stream
-    peer.onicecandidate = this.on_ICE_Candiate
-
-    console.info('localStream:', this.localStream)
-    peer.addStream(this.localStream)
-    this.peer = peer
-  }
-
-  async handleConnect(e) {
-    await this.setupWebRTC()
-    const { peer } = this
-
-    try {
-      // Create Offer
-      const offer = await peer.createOffer()
-      console.info('Offer Created:', offer)
-      self.offer = offer
-      console.info('offer:', offer)
-
-      await peer.setLocalDescription(offer)
-      console.info('localDescription set!')
-
-      // TODO: should send localDescription or offer
-      // For now send localDescription
-
-
-    } catch (e) {
-      console.error('Failed to setup local offer')
-      console.error(e.message)
-      return
-    }
-  }
-
-  on_ICE_Connection_State_Change(e) {
-    console.info('ICE Connection State Changed:', e.target.iceConnectionState)
-    this.setState({
-      ice_connection_state: e.target.iceConnectionState
-    })
-
-    switch (e.target.iceConnectionState) {
-      case 'closed':
-      case 'disconnected':
-      case 'failed':
-        if (this.peer) {
-          this.peer.close()
-          this.setState({
-            remoteStreamURL: null
-          })
-          this.remoteStream = null
-        }
-        break
-    }
-  }
-
-  on_ICE_Candiate(e) {
-    const { candidate } = e
-    console.info('ICE Candidate Found:', candidate)
-
-    if (candidate) {
-      let pendingRemoteIceCandidates = this.state.pendingCandidates
-      if (Array.isArray(pendingRemoteIceCandidates)) {
-        this.setState({
-          pendingCandidates: [...pendingRemoteIceCandidates, candidate]
-        })
-      } else {
-        this.setState({
-          pendingCandidates: [candidate]
-        })
-      }
-    } else { // Candidate gathering complete
-      if (this.state.pendingCandidates.length > 1) {
-        this.sendMessage({
-          type: this.state.offer_received ? 'answer' : 'offer',
-          payload: {
-            description: this.peer.localDescription,
-            candidates: this.state.pendingCandidates
-          }
-        })
-      } else {
-        console.error('Failed to send an offer/answer: No candidates')
-        debugger
-      }
-    }
-  }
-
-  async on_Remote_ICE_Candidate(data) {
-    if (data.payload) {
-      if (this.peer) {
-        await this.peer.addIceCandidate(new RTCIceCandidate(data.payload))
-      } else {
-        console.error('Peer is not ready')
-      }
-    } else {
-      console.info('Remote ICE Candidates Gathered!')
-    }
-  }
-
-  on_Add_Stream(e) {
-    console.info('Remote Stream Added:', e.stream)
-    this.setState({
-      remoteStreamURL: e.stream.toURL()
-    })
-    this.remoteStream = e.stream
-  }
-
-  on_Offer_Received(data) {
-    debugger
-    this.setState({
-      offer_received: true,
-      offer_answered: false,
-      offer: data
-    })
-  }
-
-  async on_Answer_Received(data) {
-    const { payload } = data
-    await this.peer.setRemoteDescription(new RTCSessionDescription(payload.description))
-    payload.candidates.forEach(c => this.peer.addIceCandidate(new RTCIceCandidate(c)))
-    this.setState({
-      answer_recevied: true
-    })
-  }
-
-  async handleAnswer() {
-    const { payload } = this.state.offer
-    await this.setupWebRTC()
-
-    const { peer } = this
-
-    await peer.setRemoteDescription(new RTCSessionDescription(payload.description))
-
-    if (Array.isArray(payload.candidates)) {
-      payload.candidates.forEach((c) => peer.addIceCandidate(new RTCIceCandidate(c)))
-    }
-    const answer = await peer.createAnswer()
-    await peer.setLocalDescription(answer)
-    this.setState({
-      offer_answered: true
-    })
-  }
-
-  sendMessage(msgObj) {
-    const { ws } = this
-    if (ws && ws.readyState === 1) {
-      ws.send(JSON.stringify(msgObj))
-    } else {
-      const e = {
-        code: 'websocket_error',
-        message: 'WebSocket state:' + ws.readyState
-      }
-      throw e
-    }
-  }
-
-  componentWillUnmount() {
-    if (this.peer) {
-      this.peer.close()
-    }
-  }
-
-  componentDidMount() {
-
-    // Setup Socket
-    const ws = new WebSocketClient(HOST);
-    const self = this
-    self.ws = ws
-
-    ws.onopen = () => {
-      console.info('Socket Connected!')
-      self.setState({
-        connected: true
-      })
-    };
-
-    ws.onmessage = e => {
-      self.setState({
-        connected: true
-      })
-      let msg = {}
-      const { data } = e
-      try { msg = JSON.parse(data)} catch(e) {
-        console.error('Invalid message:', data)
-      }
-      console.info('New Message:', data)
-      // a message was received
-      if (msg) {
-        if (msg.type === 'offer') {
-          this.on_Offer_Received(msg)
-        } else if (msg.type === 'answer') {
-          this.on_Answer_Received(msg)
-        } else {
-          console.error('Unknown message:', msg)
-        }
-      }
-    };
-
-    ws.onerror = e => {
-      // an error occurred
-      console.info(e.message);
-      self.setState({
-        connected: false
-      })
-    };
-
-    ws.onclose = e => {
-      // connection closed
-      console.log(e.code, e.reason);
-      self.setState({
-        connected: false
-      })
-    };
-
-    // Setup Camera & Audio
-
-    return mediaDevices.getUserMedia({
+  // on android, you don't have to specify sourceId manually, just use facingMode
+  // uncomment it if you want to specify
+  // if (Platform.OS === 'ios') {
+  //   MediaStreamTrack.getSources(sourceInfos => {
+  //     console.log('sourceInfos: ', sourceInfos);
+  //
+  //     for (const i = 0; i < sourceInfos.length; i++) {
+  //       const sourceInfo = sourceInfos[i];
+  //       if (
+  //           sourceInfo.kind == 'video' &&
+  //           sourceInfo.facing == (isFront ? 'front' : 'back')
+  //       ) {
+  //         videoSourceId = sourceInfo.id;
+  //       }
+  //     }
+  //   });
+  // }
+  mediaDevices
+    .getUserMedia({
       audio: true,
       video: {
         mandatory: {
-          minWidth: 500, // Provide your own width, height and frame rate here
-          minHeight: 300,
-          minFrameRate: 30
+          minWidth: 640, // Provide your own width, height and frame rate here
+          minHeight: 360,
+          minFrameRate: 30,
         },
-        facingMode: (isFront ? "user" : "environment"),
-      }
+        facingMode: isFront ? 'user' : 'environment',
+        optional: videoSourceId ? [{sourceId: videoSourceId}] : [],
+      },
     })
-    .then(stream => {
-      self.setState({
-        localStreamURL: stream.toURL()
+    .then(function(stream) {
+      console.log('getUserMedia success', stream);
+      callback(stream);
+    })
+    .catch(logError);
+}
+
+function join(roomID) {
+  console.log('join roomID', roomID);
+  socket.emit('join-server', roomID, function(socketIds) {
+    console.log('join', socketIds);
+    for (const i in socketIds) {
+      const socketId = socketIds[i];
+      createPC(socketId, true);
+    }
+  });
+}
+
+function createPC(socketId, isOffer) {
+  console.log('create PC', socketId);
+  console.log('isOffer', isOffer);
+  const pc = new RTCPeerConnection(configuration);
+  pcPeers[socketId] = pc;
+
+  pc.onicecandidate = function(event) {
+    console.log('onicecandidate', event.candidate);
+    if (event.candidate) {
+      socket.emit('exchange-server', {to: socketId, candidate: event.candidate});
+    }
+  };
+
+  function createOffer() {
+    console.log('createOffer');
+    pc.createOffer()
+      .then(desc => {
+        console.log('desc', desc);
+        pc.setLocalDescription(desc)
+          .then(() => {
+            console.log('setLocalDescription', pc.localDescription);
+            socket.emit('exchange-server', {to: socketId, sdp: pc.localDescription});
+          })
+          .catch(logError);
       })
-      self.localStream = stream
-    })
-    .catch(e => {
-      console.error('Failed to setup stream:', e.message)
+      .catch(logError);
+  }
+
+  pc.onnegotiationneeded = function() {
+    console.log('on negotiation needed');
+    if (isOffer) {
+      createOffer();
+    }
+  };
+
+  pc.oniceconnectionstatechange = function(event) {
+    console.log('on ice connection state change', event.target.iceConnectionState);
+    if (event.target.iceConnectionState === 'completed') {
+      setTimeout(() => {
+        getStats();
+      }, 1000);
+    }
+    if (event.target.iceConnectionState === 'connected') {
+      createDataChannel();
+    }
+  };
+  pc.onsignalingstatechange = function(event) {
+    console.log('on signaling state change', event.target.signalingState);
+  };
+
+  pc.onaddstream = function(event) {
+    console.log('on adds tream', event.stream);
+    container.setState({info: 'One peer join!'});
+
+    const remoteList = container.state.remoteList;
+    remoteList[socketId] = event.stream.toURL();
+    container.setState({remoteList: remoteList});
+  };
+  pc.onremovestream = function(event) {
+    console.log('on remove stream', event.stream);
+  };
+
+  pc.addStream(localStream);
+  function createDataChannel() {
+    if (pc.textDataChannel) {
+      return;
+    }
+    const dataChannel = pc.createDataChannel('text');
+
+    dataChannel.onerror = function(error) {
+      console.log('dataChannel.onerror', error);
+    };
+
+    dataChannel.onmessage = function(event) {
+      console.log('dataChannel.onmessage:', event.data);
+      container.receiveTextData({user: socketId, message: event.data});
+    };
+
+    dataChannel.onopen = function() {
+      console.log('dataChannel.onopen');
+      container.setState({textRoomConnected: true});
+    };
+
+    dataChannel.onclose = function() {
+      console.log('dataChannel.onclose');
+    };
+
+    pc.textDataChannel = dataChannel;
+  }
+  return pc;
+}
+
+function exchange(data) {
+  const fromId = data.from;
+  let pc;
+  if (fromId in pcPeers) {
+    pc = pcPeers[fromId];
+  } else {
+    pc = createPC(fromId, false);
+  }
+
+  if (data.sdp) {
+    console.log('exchange sdp', data);
+    pc.setRemoteDescription(new RTCSessionDescription(data.sdp))
+      .then(() => {
+        if (pc.remoteDescription.type === 'offer') {
+          console.log('offer is true');
+          pc.createAnswer(desc => {
+            return desc;
+          })
+            .then(desc => {
+              console.log('desc',desc);
+              pc.setLocalDescription(desc)
+                .then(() => {
+                  console.log('setLocalDescription', pc.localDescription);
+                  socket.emit('exchange-server', {
+                    to: fromId,
+                    sdp: pc.localDescription,
+                  });
+                })
+                .catch(logError);
+            })
+            .catch(logError);
+        }
+      })
+      .catch(logError);
+  } else {
+    console.log('exchange candidate', data);
+    pc.addIceCandidate(new RTCIceCandidate(data.candidate));
+  }
+}
+
+function leave(socketId) {
+  console.log('leave', socketId);
+  const pc = pcPeers[socketId];
+  // const viewIndex = pc.viewIndex;
+  pc.close();
+  delete pcPeers[socketId];
+
+  const remoteList = container.state.remoteList;
+  delete remoteList[socketId];
+  container.setState({remoteList: remoteList});
+  container.setState({info: 'One peer leave!'});
+}
+
+socket.on('exchange-client', function(data) {
+  exchange(data);
+});
+
+socket.on('leave', function(socketId) {
+  leave(socketId);
+});
+
+socket.on('connect', function(data) {
+  console.log('connect');
+  getLocalStream(true, function(stream) {
+    localStream = stream;
+    container.setState({selfViewSrc: stream.toURL()});
+    container.setState({
+      status: 'ready',
+      info: 'Please enter or create room ID',
     });
+  });
+});
+
+function logError(error) {
+  console.log('logError', error);
+}
+
+function mapHash(hash, func) {
+  const array = [];
+  for (const key in hash) {
+    const obj = hash[key];
+    array.push(func(obj, key));
+  }
+  return array;
+}
+
+function getStats() {
+  const pc = pcPeers[Object.keys(pcPeers)[0]];
+  if (pc.getRemoteStreams()[0] && pc.getRemoteStreams()[0].getAudioTracks()[0]) {
+    const track = pc.getRemoteStreams()[0].getAudioTracks()[0];
+    console.log('track', track);
+    pc.getStats(
+      track,
+      function(report) {
+        console.log('getStats report', report);
+      },
+      logError,
+    );
+  }
+}
+
+let container;
+
+class App extends Component {
+  constructor(props) {
+    super(props);
+    // this.ds = new ListView.DataSource({ rowHasChanged: (r1, r2) => true });
+    this.state = {
+      info: 'Initializing',
+      status: 'init',
+      roomID: '',
+      isFront: true,
+      selfViewSrc: null,
+      remoteList: {},
+      textRoomConnected: false,
+      textRoomData: [],
+      textRoomValue: '',
+    };
+  }
+  componentDidMount = () => {
+    container = this;
+  };
+
+  _press = event => {
+    this.refs.roomID.blur();
+    this.setState({status: 'connect', info: 'Connecting'});
+    join(this.state.roomID);
+  };
+
+  _switchVideoType = () => {
+    const isFront = !this.state.isFront;
+    this.setState({isFront});
+    getLocalStream(isFront, function(stream) {
+      if (localStream) {
+        for (const id in pcPeers) {
+          const pc = pcPeers[id];
+          pc && pc.removeStream(localStream);
+        }
+        localStream.release();
+      }
+      localStream = stream;
+      container.setState({selfViewSrc: stream.toURL()});
+
+      for (const id in pcPeers) {
+        const pc = pcPeers[id];
+        pc && pc.addStream(localStream);
+      }
+    });
+  };
+  receiveTextData = data => {
+    const textRoomData = this.state.textRoomData.slice();
+    textRoomData.push(data);
+    this.setState({textRoomData, textRoomValue: ''});
+  };
+  _textRoomPress = () => {
+    if (!this.state.textRoomValue) {
+      return;
+    }
+    const textRoomData = this.state.textRoomData.slice();
+    textRoomData.push({user: 'Me', message: this.state.textRoomValue});
+    for (const key in pcPeers) {
+      const pc = pcPeers[key];
+      pc.textDataChannel.send(this.state.textRoomValue);
+    }
+    this.setState({textRoomData, textRoomValue: ''});
+  };
+
+  _renderTextRoom = () => {
+    return (
+      <View style={styles.listViewContainer}>
+        {/*<ListView*/}
+        {/*    dataSource={this.ds.cloneWithRows(this.state.textRoomData)}*/}
+        {/*    renderRow={rowData => (*/}
+        {/*        <Text>{`${rowData.user}: ${rowData.message}`}</Text>*/}
+        {/*    )}*/}
+        {/*/>*/}
+        <TextInput
+          style={{
+            width: 200,
+            height: 30,
+            borderColor: 'gray',
+            borderWidth: 1,
+          }}
+          onChangeText={value => this.setState({textRoomValue: value})}
+          value={this.state.textRoomValue}
+        />
+        <TouchableHighlight onPress={this._textRoomPress}>
+          <Text>Send</Text>
+        </TouchableHighlight>
+      </View>
+    );
+  };
+  render() {
+    console.log('state', this.state);
+    return (
+      <View style={styles.container}>
+        <Text style={styles.welcome}>{this.state.info}</Text>
+        {this.state.textRoomConnected && this._renderTextRoom()}
+        <View style={{flexDirection: 'row'}}>
+          <Text>{this.state.isFront ? 'Use front camera' : 'Use back camera'}</Text>
+          <TouchableHighlight
+            style={{borderWidth: 1, borderColor: 'black'}}
+            onPress={this._switchVideoType}>
+            <Text>Switch camera</Text>
+          </TouchableHighlight>
+        </View>
+        {this.state.status === 'ready' ? (
+          <View>
+            <TextInput
+              ref="roomID"
+              autoCorrect={false}
+              style={{
+                width: 200,
+                height: 40,
+                borderColor: 'gray',
+                borderWidth: 1,
+              }}
+              onChangeText={text => this.setState({roomID: text})}
+              value={this.state.roomID}
+            />
+            <TouchableHighlight onPress={this._press}>
+              <Text>Enter room</Text>
+            </TouchableHighlight>
+          </View>
+        ) : null}
+        <RTCView streamURL={this.state.selfViewSrc} style={styles.selfView} />
+        {mapHash(this.state.remoteList, function(remote, index) {
+          return <RTCView key={index} streamURL={remote} style={styles.remoteView} />;
+        })}
+      </View>
+    );
   }
 }
 
 const styles = StyleSheet.create({
+  selfView: {
+    width: 200,
+    height: 150,
+  },
+  remoteView: {
+    width: 200,
+    height: 150,
+  },
   container: {
     flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'flex-start'
-  },
-  bottomView: {
-    height: 20,
-    flex: 1,
-    bottom: 80,
-    position: 'absolute',
-    alignItems: 'center'
-  },
-  connect: {
-    fontSize: 30
-  },
-  video: {
-    flex: 1,
-    flexDirection: 'row',
-    position: 'relative',
-    backgroundColor: '#eee',
-    alignSelf: 'stretch'
-  },
-  onlineCircle: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: '#1e1',
-    position: 'absolute',
-    top: 10,
-    left: 10
-  },
-  offlineCircle: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: '#333'
-  },
-  callerVideo: {
-    flex: 0.5,
-    backgroundColor: '#faa',
-    alignItems: 'center',
     justifyContent: 'center',
-    flexDirection: 'column'
+    backgroundColor: '#F5FCFF',
   },
-  calleeVideo: {
-    flex: 0.5,
-    backgroundColor: '#aaf',
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'column'
+  welcome: {
+    fontSize: 20,
+    textAlign: 'center',
+    margin: 10,
   },
-  videoWidget: {
-    position: 'relative',
-    flex: 0.5,
-    backgroundColor: '#fff',
-    width: dimensions.width / 2,
-    borderWidth: 1,
-    borderColor: '#eee'
+  listViewContainer: {
+    height: 150,
   },
-  rtcView: {
-    flex: 1,
-    width: dimensions.width / 2,
-    backgroundColor: '#f00',
-    position: 'relative'
-  }
 });
+
+export default App;
