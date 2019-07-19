@@ -36,7 +36,6 @@ let localStream;
 
 function getLocalStream(isFront, callback) {
   let videoSourceId;
-
   // on android, you don't have to specify sourceId manually, just use facingMode
   // uncomment it if you want to specify
   // if (Platform.OS === 'ios') {
@@ -75,9 +74,8 @@ function getLocalStream(isFront, callback) {
 }
 
 function join(roomID) {
-  console.log('join roomID', roomID);
-  socket.emit('join-server', roomID, function(socketIds) {
-    console.log('join', socketIds);
+  socket.emit('join-server', {roomID: roomID, displayName: 'zal'}, socketIds => {
+    // console.log('join', socketIds);
     for (const i in socketIds) {
       const socketId = socketIds[i];
       createPC(socketId, true);
@@ -86,41 +84,26 @@ function join(roomID) {
 }
 
 function createPC(socketId, isOffer) {
-  console.log('create PC', socketId);
-  console.log('isOffer', isOffer);
+  // console.log('create PC', socketId);
+  // console.log('isOffer', isOffer);
   const pc = new RTCPeerConnection(configuration);
   pcPeers[socketId] = pc;
 
-  pc.onicecandidate = function(event) {
+  pc.onicecandidate = event => {
     console.log('onicecandidate', event.candidate);
     if (event.candidate) {
       socket.emit('exchange-server', {to: socketId, candidate: event.candidate});
     }
   };
 
-  function createOffer() {
-    console.log('createOffer');
-    pc.createOffer()
-      .then(desc => {
-        console.log('desc', desc);
-        pc.setLocalDescription(desc)
-          .then(() => {
-            console.log('setLocalDescription', pc.localDescription);
-            socket.emit('exchange-server', {to: socketId, sdp: pc.localDescription});
-          })
-          .catch(logError);
-      })
-      .catch(logError);
-  }
-
-  pc.onnegotiationneeded = function() {
+  pc.onnegotiationneeded = () => {
     console.log('on negotiation needed');
     if (isOffer) {
       createOffer();
     }
   };
 
-  pc.oniceconnectionstatechange = function(event) {
+  pc.oniceconnectionstatechange = event => {
     console.log('on ice connection state change', event.target.iceConnectionState);
     if (event.target.iceConnectionState === 'completed') {
       setTimeout(() => {
@@ -131,11 +114,11 @@ function createPC(socketId, isOffer) {
       createDataChannel();
     }
   };
-  pc.onsignalingstatechange = function(event) {
+  pc.onsignalingstatechange = event => {
     console.log('on signaling state change', event.target.signalingState);
   };
 
-  pc.onaddstream = function(event) {
+  pc.onaddstream = event => {
     console.log('on adds tream', event.stream);
     container.setState({info: 'One peer join!'});
 
@@ -143,37 +126,54 @@ function createPC(socketId, isOffer) {
     remoteList[socketId] = event.stream.toURL();
     container.setState({remoteList: remoteList});
   };
-  pc.onremovestream = function(event) {
+
+  pc.onremovestream = event => {
     console.log('on remove stream', event.stream);
   };
 
   pc.addStream(localStream);
-  function createDataChannel() {
+
+  const createOffer = () => {
+    // console.log('createOffer');
+    pc.createOffer()
+      .then(desc => {
+        pc.setLocalDescription(desc)
+          .then(() => {
+            console.log('setLocalDescription', pc.localDescription);
+            socket.emit('exchange-server', {to: socketId, sdp: pc.localDescription});
+          })
+          .catch(logError);
+      })
+      .catch(logError);
+  };
+
+  const createDataChannel = () => {
     if (pc.textDataChannel) {
       return;
     }
     const dataChannel = pc.createDataChannel('text');
 
-    dataChannel.onerror = function(error) {
+    dataChannel.onerror = error => {
       console.log('dataChannel.onerror', error);
     };
 
-    dataChannel.onmessage = function(event) {
+    dataChannel.onmessage = event => {
       console.log('dataChannel.onmessage:', event.data);
       container.receiveTextData({user: socketId, message: event.data});
     };
 
-    dataChannel.onopen = function() {
+    dataChannel.onopen = () => {
       console.log('dataChannel.onopen');
       container.setState({textRoomConnected: true});
     };
 
-    dataChannel.onclose = function() {
+    dataChannel.onclose = () => {
       console.log('dataChannel.onclose');
     };
 
     pc.textDataChannel = dataChannel;
-  }
+  };
+
   return pc;
 }
 
@@ -188,29 +188,73 @@ function exchange(data) {
 
   if (data.sdp) {
     console.log('exchange sdp', data);
-    pc.setRemoteDescription(new RTCSessionDescription(data.sdp))
-      .then(() => {
-        if (pc.remoteDescription.type === 'offer') {
-          console.log('offer is true');
-          pc.createAnswer(desc => {
-            return desc;
-          })
-            .then(desc => {
-              console.log('desc',desc);
-              pc.setLocalDescription(desc)
-                .then(() => {
-                  console.log('setLocalDescription', pc.localDescription);
-                  socket.emit('exchange-server', {
-                    to: fromId,
-                    sdp: pc.localDescription,
-                  });
-                })
-                .catch(logError);
-            })
-            .catch(logError);
-        }
-      })
-      .catch(logError);
+
+    //
+    // pc.createOffer()
+    //     .then(desc => {
+    //       pc.setLocalDescription(desc)
+    //           .then(() => {
+    //             console.log('setLocalDescription', pc.localDescription);
+    //             socket.emit('exchange-server', {to: socketId, sdp: pc.localDescription});
+    //           })
+    //           .catch(logError);
+    //     })
+    //     .catch(logError);
+
+    pc.setRemoteDescription(new RTCSessionDescription(data.sdp), () => {
+      if (pc.remoteDescription.type === 'offer') {
+        pc.createAnswer(desc => {
+          console.log('createAnswer', desc);
+          pc.setLocalDescription(desc, () => {
+            console.log('setLocalDescription', pc.localDescription);
+            socket.emit('exchange', {
+              to: fromId,
+              sdp: pc.localDescription,
+            });
+          }).catch(err => {
+            console.log('error setLocalDescription', err);
+          });
+        }).catch(error => {
+          console.log('error createAnswer', error);
+        });
+      }
+    }).catch(error => {
+      console.log('remoteDescriptionError', error);
+    });
+
+    // pc.setRemoteDescription(new RTCSessionDescription(data.sdp))
+    //   .then(() => {
+    //     // if (pc.remoteDescription.type === 'offer') {
+    //       console.log('offer is true');
+    //       pc.createAnswer().then(desc => {
+    //         pc.setLocalDescription(desc)
+    //             .then(() => {
+    //               console.log('setLocalDescription', pc.localDescription);
+    //               socket.emit('exchange-server', {
+    //                 to: fromId,
+    //                 sdp: pc.localDescription,
+    //               });
+    //             })
+    //             .catch(logError);
+    //       })
+    //         // .then(desc => {
+    //         //   console.log('desc',desc);
+    //         //   pc.setLocalDescription(desc)
+    //         //     .then(() => {
+    //         //       console.log('setLocalDescription', pc.localDescription);
+    //         //       socket.emit('exchange-server', {
+    //         //         to: fromId,
+    //         //         sdp: pc.localDescription,
+    //         //       });
+    //         //     })
+    //         //     .catch(logError);
+    //         // })
+    //         .catch(logError);
+    //     // }
+    //   })
+    //   .catch((error) => {
+    //     console.log('eeeeerrrrrr',error);
+    //   });
   } else {
     console.log('exchange candidate', data);
     pc.addIceCandidate(new RTCIceCandidate(data.candidate));
@@ -221,7 +265,10 @@ function leave(socketId) {
   console.log('leave', socketId);
   const pc = pcPeers[socketId];
   // const viewIndex = pc.viewIndex;
-  pc.close();
+  if (pc) {
+    pc.close();
+  }
+
   delete pcPeers[socketId];
 
   const remoteList = container.state.remoteList;
@@ -234,7 +281,7 @@ socket.on('exchange-client', function(data) {
   exchange(data);
 });
 
-socket.on('leave', function(socketId) {
+socket.on('leave-client', function(socketId) {
   leave(socketId);
 });
 
@@ -283,25 +330,26 @@ let container;
 class App extends Component {
   constructor(props) {
     super(props);
-    // this.ds = new ListView.DataSource({ rowHasChanged: (r1, r2) => true });
     this.state = {
       info: 'Initializing',
       status: 'init',
-      roomID: '',
+      roomID: '123',
       isFront: true,
       selfViewSrc: null,
       remoteList: {},
       textRoomConnected: false,
       textRoomData: [],
       textRoomValue: '',
+      number: 1,
     };
   }
+
   componentDidMount = () => {
     container = this;
   };
 
   _press = event => {
-    this.refs.roomID.blur();
+    // this.refs.roomID.blur();
     this.setState({status: 'connect', info: 'Connecting'});
     join(this.state.roomID);
   };
@@ -369,8 +417,9 @@ class App extends Component {
       </View>
     );
   };
+
   render() {
-    console.log('state', this.state);
+    console.log('this.state', this.state);
     return (
       <View style={styles.container}>
         <Text style={styles.welcome}>{this.state.info}</Text>
@@ -404,8 +453,11 @@ class App extends Component {
         ) : null}
         <RTCView streamURL={this.state.selfViewSrc} style={styles.selfView} />
         {mapHash(this.state.remoteList, function(remote, index) {
+          // console.log('remote',remote);
           return <RTCView key={index} streamURL={remote} style={styles.remoteView} />;
         })}
+
+        <Text onPress={() => this.setState({number: this.state.number + 1})}>Increment Number</Text>
       </View>
     );
   }
