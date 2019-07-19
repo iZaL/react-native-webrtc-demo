@@ -37,6 +37,7 @@ function join(roomID) {
 
 function createPC(socketId, isOffer) {
   // console.log('isOffer', isOffer);
+
   const pc = new RTCPeerConnection(configuration);
   pcPeers[socketId] = pc;
 
@@ -66,8 +67,11 @@ function createPC(socketId, isOffer) {
     }
   };
   pc.onsignalingstatechange = event => {
-    console.log('on signaling state change');
+    console.log('on signaling state change',event.target.signalingState);
     // console.log('on signaling state change', event.target.signalingState);
+
+
+
   };
 
   pc.onaddstream = event => {
@@ -131,12 +135,16 @@ function createPC(socketId, isOffer) {
 
 function exchange(data) {
   const fromId = data.from;
+  const toId = data.to.socketId;
+
   let pc;
   if (fromId in pcPeers) {
     pc = pcPeers[fromId];
   } else {
     pc = createPC(fromId, false);
   }
+  console.log('exchange candidate from',data.from);
+  console.log('exchange candidate to',data.to.socketId);
 
   if (data.sdp) {
     console.log('exchange sdp');
@@ -161,9 +169,10 @@ function exchange(data) {
       console.log('remoteDescriptionError', error);
     });
   } else {
-    console.log('exchange candidate');
     pc.addIceCandidate(new RTCIceCandidate(data.candidate));
   }
+
+
 }
 
 function leave(socketId) {
