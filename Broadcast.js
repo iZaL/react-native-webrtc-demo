@@ -12,18 +12,7 @@ import {
 
 } from 'react-native-webrtc';
 
-// const socket = io.connect('http://192.168.8.103:4443', {transports: ['websocket']});
-
-let localStream;
-let peerConnection;
-let uuid;
-
-let peerConnectionConfig = {
-  'iceServers': [
-    {'urls': 'stun:stun.stunprotocol.org:3478'},
-    {'urls': 'stun:stun.l.google.com:19302'},
-  ]
-};
+// const socket = io.connect('http://192.168.8.105:4443', {transports: ['websocket']});
 
 class Broadcast extends Component {
 
@@ -32,73 +21,48 @@ class Broadcast extends Component {
     this.state = {
       initialized:false,
       stream:null,
-      uuid:this.createUniqueID(),
-      selfCandidate:null
+      connectionID:this.createUniqueID(),
+      socketURL:'wss://localhost:3000',
+      remoteStream:null
     };
-    // const configuration = {iceServers: [{url: 'stun:stun.l.google.com:19302'}]};
-    // this.pc = new RTCPeerConnection(configuration);
-    // this.pc.onicecandidate = this.gotIceCandidate;
-    // this.pc.onaddstream = this.gotRemoteStream;
-    this.serverConnection = new WebSocket('wss://' + window.location.hostname + ':8443');
-    this.serverConnection.onmessage = this.gotMessageFromServer;
-
   }
 
-  start = (isCaller) => {
-    peerConnection = new RTCPeerConnection(peerConnectionConfig);
-    peerConnection.onicecandidate = this.gotIceCandidate;
-    peerConnection.ontrack = this.gotRemoteStream;
-    peerConnection.addStream(localStream);
+  componentDidMount(): void {
+    const configuration = {iceServers: [{url: 'stun:stun.l.google.com:19302'}]};
+    this.pc = new RTCPeerConnection(configuration);
+    // this.pc.onicecandidate = this.gotIceCandidate;
+    this.pc.onaddstream = this.gotRemoteStream;
+    this.pc.onnegotiationneeded = this.onNegotiationNeeded;
+    this.connectSocket();
+  }
 
-    if(isCaller) {
-      peerConnection.createOffer().then(this.createdDescription).catch((e)=>console.log('e',e));
-    }
+  onNegotiationNeeded = () => {
+    console.log('on Negotiation Needed');
+    // this.createOffer();
   };
-
-  createdDescription = (description) => {
-    console.log('got description');
-    peerConnection.setLocalDescription(description).then(function() {
-      this.serverConnection.send(JSON.stringify({'sdp': peerConnection.localDescription, 'uuid': uuid}));
-    }).catch((e)=>console.log('e',e));
-  };
-
-  gotMessageFromServer = (message)  => {
-    if(!this.pc) start(false);
-
-    let signal = JSON.parse(message.data);
-
-    // Ignore messages from ourself
-    if(signal.uuid === this.state.uuid) return;
-
-    if(signal.sdp) {
-      peerConnection.setRemoteDescription(new RTCSessionDescription(signal.sdp)).then(function() {
-        // Only create answers in response to offers
-        if(signal.sdp.type == 'offer') {
-          peerConnection.createAnswer().then(this.createdDescription).catch((e)=>console.log('e',e));
-        }
-      }).catch((e)=>console.log('e',e));
-    } else if(signal.ice) {
-      peerConnection.addIceCandidate(new RTCIceCandidate(signal.ice)).catch((e)=>console.log('e',e));
-    }
-  };
-
 
   gotIceCandidate = (event) => {
-    // console.log('got ice candidate');
-    // if (event.candidate) {
-    //   this.setState({
-    //     selfCandidate:event.candidate
-    //   });
-    //   socket.emit('exchange-server', {uuid: this.state.uuid, ice: event.candidate});
-    // }
-
-    if(event.candidate != null) {
-      this.serverConnection.send(JSON.stringify({'ice': event.candidate, 'uuid': uuid}));
+    console.log('got ice candidate');
+    if (event && event.candidate) {
+      const params = {
+        "id": "onIceCandidate",
+        "candidate": {
+          "candidate": event.candidate.candidate,
+          "sdpMid": event.candidate.sdpMid,
+          "sdpMLineIndex": event.candidate.sdpMLineIndex
+        }
+      };
+      console.log('WebRTC: sending onIceCandidate:', JSON.stringify(params));
+      // this.socket.send(JSON.stringify(params));
     }
   };
 
-  gotRemoteStream = (stream) => {
-    console.log('got remove stream',stream);
+  gotRemoteStream = (event) => {
+    console.log('got remote stream');
+    // debugger;
+    this.setState({
+      remoteStream:event.stream
+    });
   };
 
   // gotDescription = (description) => {
@@ -110,20 +74,114 @@ class Broadcast extends Component {
   //     console.log('got description error',e);
   //   });
   // };
+
+  createOffer = () => {
+    this.pc.createOffer().then((offer) => {
+      this.pc.setLocalDescription(offer).then(() => {
+        let params = JSON.stringify({
+          type:'offer',
+          offer: offer,
+          name:'123'
+        });
+        console.log('params',params);
+        this.socket.send(params);
+      });
+    }).catch((error) => {
+      console.error('WebRTC: error:', error);
+    });
+  };
+
+  loginUser = () => {
+    let params = JSON.stringify({
+      type:'login',
+      name: 'afzal',
+    });
+    console.log('params',params);
+    this.socket.send(params);
+  };
+
+  connectSocket = () => {
+    this.socket = new WebSocket('ws://localhost:9090');
+
+    this.socket.onopen = (event) => {
+      this.loginUser();
+    };
+
+    this.socket.onmessage = ((message) => {
+      console.log('socket message received',message);
+      // if (message && event.data) {
+      //   message = JSON.parse(event.data);
+      // } else {
+      //   console.warn('Websocket returned an empty message.');
+      // }
+      // console.log('message',message);
+
+      let data = JSON.parse(message.data);
+      // let data = msg.data;
+
+      switch(data.type) {
+        case "login":
+          // handleLogin(data.success);
+          break;
+        //when somebody wants to call us
+        case "offer":
+          this.handleOffer(data.offer, data.name);
+          break;
+        case "answer":
+          this.handleAnswer(data.answer);
+          break;
+        // when a remote peer sends an ice candidate to us
+        case "candidate":
+          this.handleCandidate(data.candidate);
+          break;
+        case "leave":
+          console.log('candidate left');
+          // this.handleLeave();
+          break;
+        default:
+          break;
+      }
+
+    });
+
+    this.socket.onerror = (error) => {
+      console.log('WebSocket: error:', error);
+      alert('websocket error');
+    };
+
+  };
+
+  handleOffer = (offer, name) =>{
+    // connectedUser = name;
+    this.pc.setRemoteDescription(new RTCSessionDescription(offer));
+
+    //create an answer to an offer
+    this.pc.createAnswer( (answer) => {
+      this.pc.setLocalDescription(answer);
+      this.socket.send({
+        type: "answer",
+        answer: answer
+      });
+    }).then(err => console.log('err',err));
+  };
+
+  //when we got an answer from a remote user
+  handleAnswer = (answer) => {
+    this.pc.setRemoteDescription(new RTCSessionDescription(answer));
+  };
+
+//when we got an ice candidate from a remote user
+  handleCandidate = (candidate) => {
+    this.pc.addIceCandidate(new RTCIceCandidate(candidate));
+  };
+
   startPeerConnection = (stream) => {
-    this.pc.addStream(stream);
-    // this.pc.createOffer(this.gotDescription);
-    this.pc.createOffer()
-      .then(desc => {
-        this.pc.setLocalDescription(desc,(desc)=>{
-          console.log('setLocalDescription',desc);
-        })
-          .then((desc) => {
-            // socket.emit('exchange-server', {to: socketId, sdp: pc.localDescription});
-          })
-          .catch(this.logError);
-      })
-      .catch(this.logError);
+    // socket.emit('join-server', {roomID: roomID, displayName: 'zal'}, socketIds => {
+    //   for (const i in socketIds) {
+    //     const socketId = socketIds[i];
+    // createPC(socketId, true);
+    // }
+    // });
   };
 
   captureMedia = () => {
@@ -134,28 +192,29 @@ class Broadcast extends Component {
           video: true,
         })
         .then((stream) => {
-          this.setState({
-            initialized:true,
-            stream:stream
-          });
           resolve(stream);
         })
         .catch(() => {
-            reject(new Error('Failed to add ICE candidate'));
+          reject(new Error('Failed to add ICE candidate'));
         });
     });
-  };
-
-  logError = (e) => {
-    console.log('e',e);
   };
 
   broadcast = () => {
     console.log('broadcasting');
     // 1 - capture Media
-    // 2 - start peer connections
+    // 2 - add stream
+    // 3 - create offer
     this.captureMedia().then((stream) => {
-      this.startPeerConnection(stream);
+      // this.connectSocket();
+      this.createOffer();
+      this.pc.addStream(stream);
+      this.setState({
+        initialized:true,
+        stream:stream
+      });
+      // this.createOffer();
+      // this.startPeerConnection(stream);
     });
   };
 
@@ -164,6 +223,10 @@ class Broadcast extends Component {
       return Math.floor((1 + Math.random()) * 0x10000).toString(16).substring(1);
     };
     return s4() + s4() + '-' + s4() + '-' + s4() + '-' + s4() + '-' + s4() + s4() + s4();
+  };
+
+  logError = (e) => {
+    console.log('e',e);
   };
 
   render() {
@@ -180,6 +243,15 @@ class Broadcast extends Component {
         <TouchableHighlight onPress={this.broadcast} style={styles.button}>
           <Text style={styles.buttonText}>Broadcast</Text>
         </TouchableHighlight>
+
+        {
+          this.state.remoteStream !== null &&
+            // console.log('remoteStream',this.state.remoteStream);
+            // return (
+              <RTCView streamURL={this.state.remoteStream.toURL()} style={styles.selfView} />
+            // );
+          // })
+        }
 
       </View>
     );

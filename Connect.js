@@ -73,7 +73,6 @@ class Connect extends Component {
   }
 }
 
-
 const styles = StyleSheet.create({
   selfView: {
     width: 400,
