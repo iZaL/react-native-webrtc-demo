@@ -107,6 +107,19 @@ class Broadcast extends Component {
       this.loginUser();
     };
 
+    this.socket.onclose = (event) => {
+      console.log('closing socket');
+      // const viewIndex = peerConnection.viewIndex;
+      // this.pc.close();
+      if(this.pc !== null) {
+        this.pc.close();
+      }
+    };
+
+    this.socket.addEventListener('error', function (event) {
+      console.log('WebSocket error: ', event);
+    });
+
     this.socket.onmessage = ((message) => {
       console.log('socket message received',message);
       // if (message && event.data) {
@@ -136,7 +149,7 @@ class Broadcast extends Component {
           break;
         case "leave":
           console.log('candidate left');
-          // this.handleLeave();
+          this.handleLeave();
           break;
         default:
           break;
@@ -174,6 +187,18 @@ class Broadcast extends Component {
   handleCandidate = (candidate) => {
     this.pc.addIceCandidate(new RTCIceCandidate(candidate));
   };
+
+
+  handleLeave = () => {
+    // connectedUser = null;
+    this.setState({
+      remoteStream:null
+    });
+    this.pc.close();
+    this.pc.onicecandidate = null;
+    this.pc.onaddstream = null;
+  };
+
 
   startPeerConnection = (stream) => {
     // socket.emit('join-server', {roomID: roomID, displayName: 'zal'}, socketIds => {
