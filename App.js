@@ -4,7 +4,6 @@ import { createBottomTabNavigator, createAppContainer } from 'react-navigation';
 import Broadcast from './Broadcast';
 import Connect from './Connect';
 
-
 class HomeScreen extends React.Component {
   render() {
     return (
@@ -20,6 +19,5 @@ const TabNavigator = createBottomTabNavigator({
   Broadcast: Broadcast,
   Connect: Connect,
 });
-
 
 export default createAppContainer(TabNavigator);
