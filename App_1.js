@@ -1,6 +1,6 @@
 import React from 'react';
-import SocketIO from 'socket.io-client'
-import WebSocketClient from 'reconnecting-websocket'
+import SocketIO from 'socket.io-client';
+import WebSocketClient from 'reconnecting-websocket';
 
 import {
   RTCPeerConnection,
@@ -10,16 +10,16 @@ import {
   MediaStream,
   MediaStreamTrack,
   mediaDevices,
-} from 'react-native-webrtc'
-import { StyleSheet, Text, View, TouchableOpacity, Dimensions } from 'react-native';
+} from 'react-native-webrtc';
+import {StyleSheet, Text, View, TouchableOpacity, Dimensions} from 'react-native';
 
-const dimensions = Dimensions.get('window')
+const dimensions = Dimensions.get('window');
 
 const HOST = process.env.HOST || 'ws://172.20.1.150:8000';
-const isFront = true // Use Front camera?
+const isFront = true; // Use Front camera?
 const DEFAULT_ICE = {
-// we need to fork react-native-webrtc for relay-only to work.
-//  iceTransportPolicy: "relay",
+  // we need to fork react-native-webrtc for relay-only to work.
+  //  iceTransportPolicy: "relay",
   iceServers: [
     // {
     //   urls: 'turn:s2.xirsys.com:80?transport=tcp',
@@ -29,7 +29,7 @@ const DEFAULT_ICE = {
     {
       urls: 'turn:turn.msgsafe.io:443?transport=tcp',
       username: 'a9a2b514',
-      credential: '00163e7826d6'
+      credential: '00163e7826d6',
     },
     /* Native libraries DO NOT fail over correctly.
     {
@@ -38,155 +38,149 @@ const DEFAULT_ICE = {
       credential: '00163e7826d6'
     }
     */
-  ]
-}
+  ],
+};
 
 export default class App extends React.Component {
-
   constructor(props) {
-    super(props)
-    this.handleConnect = this.handleConnect.bind(this)
-    this.on_ICE_Connection_State_Change = this.on_ICE_Connection_State_Change.bind(this)
-    this.on_Add_Stream = this.on_Add_Stream.bind(this)
-    this.on_ICE_Candiate = this.on_ICE_Candiate.bind(this)
-    this.sendMessage = this.sendMessage.bind(this)
-    this.on_Offer_Received = this.on_Offer_Received.bind(this)
-    this.on_Answer_Received = this.on_Answer_Received.bind(this)
-    this.setupWebRTC = this.setupWebRTC.bind(this)
-    this.handleAnswer = this.handleAnswer.bind(this)
-    this.on_Remote_ICE_Candidate = this.on_Remote_ICE_Candidate.bind(this)
+    super(props);
+    this.handleConnect = this.handleConnect.bind(this);
+    this.on_ICE_Connection_State_Change = this.on_ICE_Connection_State_Change.bind(this);
+    this.on_Add_Stream = this.on_Add_Stream.bind(this);
+    this.on_ICE_Candiate = this.on_ICE_Candiate.bind(this);
+    this.sendMessage = this.sendMessage.bind(this);
+    this.on_Offer_Received = this.on_Offer_Received.bind(this);
+    this.on_Answer_Received = this.on_Answer_Received.bind(this);
+    this.setupWebRTC = this.setupWebRTC.bind(this);
+    this.handleAnswer = this.handleAnswer.bind(this);
+    this.on_Remote_ICE_Candidate = this.on_Remote_ICE_Candidate.bind(this);
 
     this.state = {
       connected: false,
       ice_connection_state: '',
-      pendingCandidates: []
-    }
+      pendingCandidates: [],
+    };
   }
 
   render() {
     return (
-        <View style={styles.container}>
-          <View style={styles.video}>
-            <View style={styles.callerVideo}>
-              <View style={styles.videoWidget}>
-                { this.state.localStreamURL &&
-                <RTCView streamURL={this.state.localStreamURL} style={styles.rtcView}/>
-                }
-              </View>
-            </View>
-            <View style={styles.calleeVideo}>
-              <View style={styles.videoWidget}>
-                { this.state.remoteStreamURL &&
-                <RTCView streamURL={this.state.remoteStreamURL} style={styles.rtcView}/>
-                }
-              </View>
+      <View style={styles.container}>
+        <View style={styles.video}>
+          <View style={styles.callerVideo}>
+            <View style={styles.videoWidget}>
+              {this.state.localStreamURL && (
+                <RTCView streamURL={this.state.localStreamURL} style={styles.rtcView} />
+              )}
             </View>
           </View>
-          <View style={ this.state.connected ? styles.onlineCircle : styles.offlineCircle}/>
-          <View style={styles.bottomView}>
-            <TouchableOpacity onPress={this.handleConnect} disabled={this.state.offer_received}>
-              <Text style={styles.connect}>
-                Connect
-              </Text>
-            </TouchableOpacity>
-            { // Offer received and offer not answered
-              (this.state.offer_received && !this.state.offer_answered) &&
-              <TouchableOpacity onPress={this.handleAnswer}>
-                <Text style={styles.connect}>
-                  Answer
-                </Text>
-              </TouchableOpacity>
-            }
+          <View style={styles.calleeVideo}>
+            <View style={styles.videoWidget}>
+              {this.state.remoteStreamURL && (
+                <RTCView streamURL={this.state.remoteStreamURL} style={styles.rtcView} />
+              )}
+            </View>
           </View>
         </View>
+        <View style={this.state.connected ? styles.onlineCircle : styles.offlineCircle} />
+        <View style={styles.bottomView}>
+          <TouchableOpacity onPress={this.handleConnect} disabled={this.state.offer_received}>
+            <Text style={styles.connect}>Connect</Text>
+          </TouchableOpacity>
+          {// Offer received and offer not answered
+          this.state.offer_received && !this.state.offer_answered && (
+            <TouchableOpacity onPress={this.handleAnswer}>
+              <Text style={styles.connect}>Answer</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
     );
   }
 
   async setupWebRTC() {
     const self = this;
-    const peer = new RTCPeerConnection(DEFAULT_ICE)
-    peer.oniceconnectionstatechange = this.on_ICE_Connection_State_Change
-    peer.onaddstream = this.on_Add_Stream
-    peer.onicecandidate = this.on_ICE_Candiate
+    const peer = new RTCPeerConnection(DEFAULT_ICE);
+    peer.oniceconnectionstatechange = this.on_ICE_Connection_State_Change;
+    peer.onaddstream = this.on_Add_Stream;
+    peer.onicecandidate = this.on_ICE_Candiate;
 
-    console.info('localStream:', this.localStream)
-    peer.addStream(this.localStream)
-    this.peer = peer
+    console.info('localStream:', this.localStream);
+    peer.addStream(this.localStream);
+    this.peer = peer;
   }
 
   async handleConnect(e) {
-    await this.setupWebRTC()
-    const { peer } = this
+    await this.setupWebRTC();
+    const {peer} = this;
 
     try {
       // Create Offer
-      const offer = await peer.createOffer()
-      console.info('Offer Created:', offer)
-      self.offer = offer
-      console.info('offer:', offer)
+      const offer = await peer.createOffer();
+      console.info('Offer Created:', offer);
+      self.offer = offer;
+      console.info('offer:', offer);
 
-      await peer.setLocalDescription(offer)
-      console.info('localDescription set!')
+      await peer.setLocalDescription(offer);
+      console.info('localDescription set!');
 
       // TODO: should send localDescription or offer
       // For now send localDescription
-
-
     } catch (e) {
-      console.error('Failed to setup local offer')
-      console.error(e.message)
-      return
+      console.error('Failed to setup local offer');
+      console.error(e.message);
+      return;
     }
   }
 
   on_ICE_Connection_State_Change(e) {
-    console.info('ICE Connection State Changed:', e.target.iceConnectionState)
+    console.info('ICE Connection State Changed:', e.target.iceConnectionState);
     this.setState({
-      ice_connection_state: e.target.iceConnectionState
-    })
+      ice_connection_state: e.target.iceConnectionState,
+    });
 
     switch (e.target.iceConnectionState) {
       case 'closed':
       case 'disconnected':
       case 'failed':
         if (this.peer) {
-          this.peer.close()
+          this.peer.close();
           this.setState({
-            remoteStreamURL: null
-          })
-          this.remoteStream = null
+            remoteStreamURL: null,
+          });
+          this.remoteStream = null;
         }
-        break
+        break;
     }
   }
 
   on_ICE_Candiate(e) {
-    const { candidate } = e
-    console.info('ICE Candidate Found:', candidate)
+    const {candidate} = e;
+    console.info('ICE Candidate Found:', candidate);
 
     if (candidate) {
-      let pendingRemoteIceCandidates = this.state.pendingCandidates
+      let pendingRemoteIceCandidates = this.state.pendingCandidates;
       if (Array.isArray(pendingRemoteIceCandidates)) {
         this.setState({
-          pendingCandidates: [...pendingRemoteIceCandidates, candidate]
-        })
+          pendingCandidates: [...pendingRemoteIceCandidates, candidate],
+        });
       } else {
         this.setState({
-          pendingCandidates: [candidate]
-        })
+          pendingCandidates: [candidate],
+        });
       }
-    } else { // Candidate gathering complete
+    } else {
+      // Candidate gathering complete
       if (this.state.pendingCandidates.length > 1) {
         this.sendMessage({
           type: this.state.offer_received ? 'answer' : 'offer',
           payload: {
             description: this.peer.localDescription,
-            candidates: this.state.pendingCandidates
-          }
-        })
+            candidates: this.state.pendingCandidates,
+          },
+        });
       } else {
-        console.error('Failed to send an offer/answer: No candidates')
-        debugger
+        console.error('Failed to send an offer/answer: No candidates');
+        debugger;
       }
     }
   }
@@ -194,110 +188,111 @@ export default class App extends React.Component {
   async on_Remote_ICE_Candidate(data) {
     if (data.payload) {
       if (this.peer) {
-        await this.peer.addIceCandidate(new RTCIceCandidate(data.payload))
+        await this.peer.addIceCandidate(new RTCIceCandidate(data.payload));
       } else {
-        console.error('Peer is not ready')
+        console.error('Peer is not ready');
       }
     } else {
-      console.info('Remote ICE Candidates Gathered!')
+      console.info('Remote ICE Candidates Gathered!');
     }
   }
 
   on_Add_Stream(e) {
-    console.info('Remote Stream Added:', e.stream)
+    console.info('Remote Stream Added:', e.stream);
     this.setState({
-      remoteStreamURL: e.stream.toURL()
-    })
-    this.remoteStream = e.stream
+      remoteStreamURL: e.stream.toURL(),
+    });
+    this.remoteStream = e.stream;
   }
 
   on_Offer_Received(data) {
-    debugger
+    debugger;
     this.setState({
       offer_received: true,
       offer_answered: false,
-      offer: data
-    })
+      offer: data,
+    });
   }
 
   async on_Answer_Received(data) {
-    const { payload } = data
-    await this.peer.setRemoteDescription(new RTCSessionDescription(payload.description))
-    payload.candidates.forEach(c => this.peer.addIceCandidate(new RTCIceCandidate(c)))
+    const {payload} = data;
+    await this.peer.setRemoteDescription(new RTCSessionDescription(payload.description));
+    payload.candidates.forEach(c => this.peer.addIceCandidate(new RTCIceCandidate(c)));
     this.setState({
-      answer_recevied: true
-    })
+      answer_recevied: true,
+    });
   }
 
   async handleAnswer() {
-    const { payload } = this.state.offer
-    await this.setupWebRTC()
+    const {payload} = this.state.offer;
+    await this.setupWebRTC();
 
-    const { peer } = this
+    const {peer} = this;
 
-    await peer.setRemoteDescription(new RTCSessionDescription(payload.description))
+    await peer.setRemoteDescription(new RTCSessionDescription(payload.description));
 
     if (Array.isArray(payload.candidates)) {
-      payload.candidates.forEach((c) => peer.addIceCandidate(new RTCIceCandidate(c)))
+      payload.candidates.forEach(c => peer.addIceCandidate(new RTCIceCandidate(c)));
     }
-    const answer = await peer.createAnswer()
-    await peer.setLocalDescription(answer)
+    const answer = await peer.createAnswer();
+    await peer.setLocalDescription(answer);
     this.setState({
-      offer_answered: true
-    })
+      offer_answered: true,
+    });
   }
 
   sendMessage(msgObj) {
-    const { ws } = this
+    const {ws} = this;
     if (ws && ws.readyState === 1) {
-      ws.send(JSON.stringify(msgObj))
+      ws.send(JSON.stringify(msgObj));
     } else {
       const e = {
         code: 'websocket_error',
-        message: 'WebSocket state:' + ws.readyState
-      }
-      throw e
+        message: 'WebSocket state:' + ws.readyState,
+      };
+      throw e;
     }
   }
 
   componentWillUnmount() {
     if (this.peer) {
-      this.peer.close()
+      this.peer.close();
     }
   }
 
   componentDidMount() {
-
     // Setup Socket
     const ws = new WebSocketClient(HOST);
-    const self = this
-    self.ws = ws
+    const self = this;
+    self.ws = ws;
 
     ws.onopen = () => {
-      console.info('Socket Connected!')
+      console.info('Socket Connected!');
       self.setState({
-        connected: true
-      })
+        connected: true,
+      });
     };
 
     ws.onmessage = e => {
       self.setState({
-        connected: true
-      })
-      let msg = {}
-      const { data } = e
-      try { msg = JSON.parse(data)} catch(e) {
-        console.error('Invalid message:', data)
+        connected: true,
+      });
+      let msg = {};
+      const {data} = e;
+      try {
+        msg = JSON.parse(data);
+      } catch (e) {
+        console.error('Invalid message:', data);
       }
-      console.info('New Message:', data)
+      console.info('New Message:', data);
       // a message was received
       if (msg) {
         if (msg.type === 'offer') {
-          this.on_Offer_Received(msg)
+          this.on_Offer_Received(msg);
         } else if (msg.type === 'answer') {
-          this.on_Answer_Received(msg)
+          this.on_Answer_Received(msg);
         } else {
-          console.error('Unknown message:', msg)
+          console.error('Unknown message:', msg);
         }
       }
     };
@@ -306,40 +301,41 @@ export default class App extends React.Component {
       // an error occurred
       console.info(e.message);
       self.setState({
-        connected: false
-      })
+        connected: false,
+      });
     };
 
     ws.onclose = e => {
       // connection closed
       console.log(e.code, e.reason);
       self.setState({
-        connected: false
-      })
+        connected: false,
+      });
     };
 
     // Setup Camera & Audio
 
-    return mediaDevices.getUserMedia({
-      audio: true,
-      video: {
-        mandatory: {
-          minWidth: 500, // Provide your own width, height and frame rate here
-          minHeight: 300,
-          minFrameRate: 30
+    return mediaDevices
+      .getUserMedia({
+        audio: true,
+        video: {
+          mandatory: {
+            minWidth: 500, // Provide your own width, height and frame rate here
+            minHeight: 300,
+            minFrameRate: 30,
+          },
+          facingMode: isFront ? 'user' : 'environment',
         },
-        facingMode: (isFront ? "user" : "environment"),
-      }
-    })
-    .then(stream => {
-      self.setState({
-        localStreamURL: stream.toURL()
       })
-      self.localStream = stream
-    })
-    .catch(e => {
-      console.error('Failed to setup stream:', e.message)
-    });
+      .then(stream => {
+        self.setState({
+          localStreamURL: stream.toURL(),
+        });
+        self.localStream = stream;
+      })
+      .catch(e => {
+        console.error('Failed to setup stream:', e.message);
+      });
   }
 }
 
@@ -348,24 +344,24 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#fff',
     alignItems: 'center',
-    justifyContent: 'flex-start'
+    justifyContent: 'flex-start',
   },
   bottomView: {
     height: 20,
     flex: 1,
     bottom: 80,
     position: 'absolute',
-    alignItems: 'center'
+    alignItems: 'center',
   },
   connect: {
-    fontSize: 30
+    fontSize: 30,
   },
   video: {
     flex: 1,
     flexDirection: 'row',
     position: 'relative',
     backgroundColor: '#eee',
-    alignSelf: 'stretch'
+    alignSelf: 'stretch',
   },
   onlineCircle: {
     width: 20,
@@ -374,27 +370,27 @@ const styles = StyleSheet.create({
     backgroundColor: '#1e1',
     position: 'absolute',
     top: 10,
-    left: 10
+    left: 10,
   },
   offlineCircle: {
     width: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: '#333'
+    backgroundColor: '#333',
   },
   callerVideo: {
     flex: 0.5,
     backgroundColor: '#faa',
     alignItems: 'center',
     justifyContent: 'center',
-    flexDirection: 'column'
+    flexDirection: 'column',
   },
   calleeVideo: {
     flex: 0.5,
     backgroundColor: '#aaf',
     alignItems: 'center',
     justifyContent: 'center',
-    flexDirection: 'column'
+    flexDirection: 'column',
   },
   videoWidget: {
     position: 'relative',
@@ -402,12 +398,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     width: dimensions.width / 2,
     borderWidth: 1,
-    borderColor: '#eee'
+    borderColor: '#eee',
   },
   rtcView: {
     flex: 1,
     width: dimensions.width / 2,
     backgroundColor: '#f00',
-    position: 'relative'
-  }
+    position: 'relative',
+  },
 });

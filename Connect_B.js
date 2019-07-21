@@ -1,6 +1,6 @@
 import React, {Component} from 'react';
 import {StyleSheet, Text, TextInput, TouchableHighlight, View} from 'react-native';
-import { createBottomTabNavigator, createAppContainer } from 'react-navigation';
+import {createBottomTabNavigator, createAppContainer} from 'react-navigation';
 
 import io from 'socket.io-client';
 import {
@@ -67,7 +67,7 @@ function createPC(socketId, isOffer) {
     }
   };
   pc.onsignalingstatechange = event => {
-    console.log('on signaling state change',event.target.signalingState);
+    console.log('on signaling state change', event.target.signalingState);
     // console.log('on signaling state change', event.target.signalingState);
   };
 
@@ -140,8 +140,8 @@ function exchange(data) {
   } else {
     pc = createPC(fromId, false);
   }
-  console.log('exchange candidate from',data.from);
-  console.log('exchange candidate to',data.to.socketId);
+  console.log('exchange candidate from', data.from);
+  console.log('exchange candidate to', data.to.socketId);
 
   if (data.sdp) {
     console.log('exchange sdp');
@@ -168,8 +168,6 @@ function exchange(data) {
   } else {
     pc.addIceCandidate(new RTCIceCandidate(data.candidate));
   }
-
-
 }
 
 function leave(socketId) {
@@ -365,7 +363,7 @@ class Connect extends Component {
         ) : null}
         <RTCView streamURL={this.state.selfViewSrc} style={styles.selfView} />
         {mapHash(this.state.remoteList, function(remote, index) {
-          console.log('remote',remote);
+          console.log('remote', remote);
           return <RTCView key={index} streamURL={remote} style={styles.remoteView} />;
         })}
 

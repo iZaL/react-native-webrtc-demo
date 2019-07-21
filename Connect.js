@@ -1,6 +1,6 @@
 import React, {Component} from 'react';
 import {StyleSheet, Text, TextInput, TouchableHighlight, View} from 'react-native';
-import { createBottomTabNavigator, createAppContainer } from 'react-navigation';
+import {createBottomTabNavigator, createAppContainer} from 'react-navigation';
 
 import io from 'socket.io-client';
 import {
@@ -14,14 +14,13 @@ import {
 const socket = io.connect('http://192.168.8.103:4443', {transports: ['websocket']});
 
 class Connect extends Component {
-
   constructor(props) {
     super(props);
     this.state = {
-      initialized:false,
-      stream:null,
-      uuid:this.createUniqueID(),
-      selfCandidate:null
+      initialized: false,
+      stream: null,
+      uuid: this.createUniqueID(),
+      selfCandidate: null,
     };
     const configuration = {iceServers: [{url: 'stun:stun.l.google.com:19302'}]};
     this.pc = new RTCPeerConnection(configuration);
@@ -30,7 +29,7 @@ class Connect extends Component {
   }
 
   connect = () => {
-    console.log('pc',this.pc);
+    console.log('pc', this.pc);
     socket.emit('join-server', {roomID: '123', displayName: 'user2'}, socketIds => {
       for (const i in socketIds) {
         const socketId = socketIds[i];
@@ -39,11 +38,11 @@ class Connect extends Component {
     });
   };
 
-  gotIceCandidate = (event) => {
+  gotIceCandidate = event => {
     console.log('got ice candidate');
     if (event.candidate) {
       this.setState({
-        selfCandidate:event.candidate
+        selfCandidate: event.candidate,
       });
       socket.emit('exchange-server', {uuid: this.state.uuid, candidate: event.candidate});
     }
@@ -55,7 +54,9 @@ class Connect extends Component {
 
   createUniqueID = () => {
     const s4 = () => {
-      return Math.floor((1 + Math.random()) * 0x10000).toString(16).substring(1);
+      return Math.floor((1 + Math.random()) * 0x10000)
+        .toString(16)
+        .substring(1);
     };
     return s4() + s4() + '-' + s4() + '-' + s4() + '-' + s4() + '-' + s4() + s4() + s4();
   };
@@ -95,20 +96,20 @@ const styles = StyleSheet.create({
   listViewContainer: {
     height: 150,
   },
-  button:{
-    padding:10,
+  button: {
+    padding: 10,
     backgroundColor: 'yellow',
-    margin:5
+    margin: 5,
   },
-  videoContainer:{
-    alignItems:'center',
-    backgroundColor:'gray',
-    margin:5,
-    padding:5,
+  videoContainer: {
+    alignItems: 'center',
+    backgroundColor: 'gray',
+    margin: 5,
+    padding: 5,
   },
-  buttonText:{
-    textAlign: 'center'
-  }
+  buttonText: {
+    textAlign: 'center',
+  },
 });
 
 export default Connect;
