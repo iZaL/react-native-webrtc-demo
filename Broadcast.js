@@ -38,7 +38,7 @@ class Broadcast extends Component {
     });
 
     this.socket.on('connect', () => {
-      // this.joinRoom();
+      this.joinRoom();
     });
 
     this.socket.on('created', room => {
