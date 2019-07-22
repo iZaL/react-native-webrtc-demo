@@ -1,6 +1,5 @@
 import React, {Component} from 'react';
-import {StyleSheet, Text, TextInput, TouchableHighlight, View} from 'react-native';
-
+import {StyleSheet, Text, TouchableHighlight, View} from 'react-native';
 import io from 'socket.io-client';
 import {
   mediaDevices,
@@ -8,155 +7,226 @@ import {
   RTCPeerConnection,
   RTCSessionDescription,
   RTCView,
-  MediaStream,
-  MediaStreamTrack
 } from 'react-native-webrtc';
 
 class Broadcast extends Component {
   constructor(props) {
     super(props);
     this.state = {
-      initialized: false,
-      stream: null,
-      connectionID: this.createUniqueID(),
-      socketURL: 'http://localhost:8080',
+      isChannelReady: false,
+      isInitiator: false,
+      isStarted: false,
+      localStream: null,
+      pc: null,
       remoteStream: null,
-      userID: 1,
-      socketConnected: false,
+      turnReady: null,
+      room: 'foo',
     };
   }
 
   componentDidMount(): void {
-    const configuration = {iceServers: [{url: 'stun:stun.l.google.com:19302'}]};
-    this.pc = new RTCPeerConnection(configuration);
-    this.pc.onicecandidate = this.onIceCandidate;
-    this.pc.onaddstream = this.gotRemoteStream;
-    this.pc.onnegotiationneeded = this.onNegotiationNeeded;
-    // this.streamMedia();
+    this.connectSocket();
+    // this.joinRoom();
   }
 
-  onNegotiationNeeded = () => {
-    console.log('onNegotiationNeeded');
-  };
 
-  onIceCandidate = event => {
-    this.pc.addIceCandidate(new RTCIceCandidate(event.candidate));
-    this.socket.send('candidate',{
-      candidate:event.candidate
+  connectSocket = () => {
+    console.log('connectSocket');
+    this.socket = io.connect('http://192.168.8.102:3000', {transports: ['websocket']});
+
+    this.socket.on('connect', () => {
+      this.joinRoom();
     });
-  };
 
-  gotRemoteStream = event => {
-    console.log('got remote stream');
-    // debugger;
-    this.setState({
-      remoteStream: event.stream,
+    this.socket.on('created', room => {
+      console.log('Created room ' + room);
+      this.setState({
+        isInitiator: true,
+      },()=>{
+      });
     });
-  };
 
-  createOffer = (isCaller = true) => {
-    console.log('createOffer');
-    if (isCaller) {
-      this.pc
-        .createOffer()
-        .then(offer => {
-          this.pc.setLocalDescription(offer);
-          this.socket.emit('offer', {
-            offer: offer,
-            userID: this.state.userID,
-            remoteUserID: this.state.userID === 1 ? 2 : 1,
-          });
-        })
-        .catch(error => {
-          console.error('WebRTC: createOffer setLocalDescription error:', error);
+    this.socket.on('full', room => {
+      alert('Room ' + room + ' is full.');
+    });
+
+    this.socket.on('join', room => {
+      console.log('Another peer made a request to join room ' + room);
+      console.log('This peer is the initiator of room ' + room + '!');
+      this.setState({
+        isChannelReady: true,
+      });
+    });
+
+    this.socket.on('joined', room => {
+      console.log('joined: ' + room);
+      this.setState({
+        isChannelReady: true,
+      });
+    });
+
+    this.socket.on('log', array => {
+      console.log.apply(console, array);
+    });
+
+    this.socket.on('message', message => {
+      console.log('Client received message:', message);
+
+      let {isInitiator, isStarted} = this.state;
+
+      if (message === 'got user media') {
+        this.maybeStart();
+      } else if (message.type === 'offer') {
+        if (!isInitiator && !isStarted) {
+          this.maybeStart();
+        }
+        this.pc.setRemoteDescription(new RTCSessionDescription(message));
+        this.doAnswer();
+      } else if (message.type === 'answer' && isStarted) {
+        this.pc.setRemoteDescription(new RTCSessionDescription(message));
+      } else if (message.type === 'candidate' && isStarted) {
+        let candidate = new RTCIceCandidate({
+          sdpMLineIndex: message.label,
+          candidate: message.candidate,
         });
-    } else {
-      console.log('did not run createOffer');
+        this.pc.addIceCandidate(candidate);
+      } else if (message === 'bye' && isStarted) {
+        this.handleRemoteHangup();
+      }
+    });
+  };
+
+  ////////////////////////////////////////////////
+
+  joinRoom = () => {
+    let {room} = this.state;
+    this.socket.emit('create or join', room);
+    console.log('Attempted to create or  join room', room);
+  };
+
+  sendMessage = message => {
+    console.log('Client sending message: ', message);
+    this.socket.emit('message', message);
+  };
+  // miscellaneous
+
+  gotStream = stream => {
+    console.log('Adding local stream.', stream);
+    // localStream = stream;
+    // localVideo.srcObject = stream;
+    this.setState({
+      localStream: stream,
+    });
+    this.sendMessage('got user media');
+    if (this.state.isInitiator) {
+      this.maybeStart();
     }
   };
 
-  handleOffer = data => {
-    console.log('handleOffer');
-    let offer = data.offer;
-    if(this.state.userID !== data.userID) {
-      console.log('same user');
-    } else {
-      if (offer.sdp) {
-        // console.log('yes it is sdp');
-        this.pc.setRemoteDescription(offer);
-        if(offer.type === 'offer') {
-          this.createAnswer();
-        }
-      } else if (offer.ice) {
-        console.log('yes it is ice');
-        this.pc.addIceCandidate(new RTCIceCandidate(offer.ice));
+  maybeStart = () => {
+    let {isStarted, localStream, isChannelReady, isInitiator} = this.state;
+
+    console.log('>>>>>>> maybeStart() ', isStarted, localStream, isChannelReady);
+    if (!isStarted && typeof localStream !== 'undefined' && isChannelReady) {
+      console.log('>>>>>> creating peer connection');
+      this.createPeerConnection();
+      this.pc.addStream(localStream);
+      this.setState({
+        isStarted: true,
+      });
+      console.log('isInitiator', isInitiator);
+      if (isInitiator) {
+        this.doCall();
       }
     }
   };
 
-  createAnswer = () => {
-    console.log('createAnswer');
-    this.pc.createAnswer().then((answer) => {
-      // this.pc.setLocalDescription(answer);
-      this.pc.setLocalDescription(answer);
-      this.socket.emit('answer', {
-        answer: answer,
-        userID: this.state.userID,
-        remoteUserID: this.state.userID === 1 ? 2 : 1,
+  createPeerConnection = () => {
+    try {
+      this.pc = new RTCPeerConnection(null);
+      this.pc.onicecandidate = this.handleIceCandidate;
+      this.pc.onaddstream = this.handleRemoteStreamAdded;
+      this.pc.onremovestream = this.handleRemoteStreamRemoved;
+      console.log('Created RTCPeerConnnection');
+    } catch (e) {
+      console.log('Failed to create PeerConnection, exception: ' + e.message);
+      alert('Cannot create RTCPeerConnection object.');
+      return;
+    }
+  };
+
+  handleIceCandidate = event => {
+    console.log('icecandidate event: ', event);
+    if (event.candidate) {
+      this.sendMessage({
+        type: 'candidate',
+        label: event.candidate.sdpMLineIndex,
+        id: event.candidate.sdpMid,
+        candidate: event.candidate.candidate,
       });
-    }).catch((e) => {
-      console.log('Error: createAnswer',e);
-    });
+    } else {
+      console.log('End of candidates.');
+    }
   };
 
-  handleAnswer = answer => {
-    console.log('handleAnswer');
-    this.pc.setRemoteDescription(new RTCSessionDescription(answer)).catch(e => {
-      console.log('handle answer error', e);
-    });
+  handleCreateOfferError = event => {
+    console.log('createOffer() error: ', event);
   };
 
-  gotIceCandidate = candidate => {
-    console.log('gotIceCandidate');
-    this.pc.addIceCandidate(new RTCIceCandidate(candidate));
+  doCall = () => {
+    console.log('Sending offer to peer');
+    this.pc.createOffer().then(this.setLocalAndSendMessage).catch(this.handleCreateOfferError);
   };
 
-  closeSocket = () => {
-    console.log('closeSocket');
+  doAnswer = () => {
+    console.log('Sending answer to peer.');
+    this.pc.createAnswer().then(this.setLocalAndSendMessage, this.onCreateSessionDescriptionError);
+  };
+
+  setLocalAndSendMessage = sessionDescription => {
+    this.pc.setLocalDescription(sessionDescription);
+    console.log('setLocalAndSendMessage sending message', sessionDescription);
+    this.sendMessage(sessionDescription);
+  };
+
+  onCreateSessionDescriptionError = error => {
+    console.log('Failed to create session description: ' + error.toString());
+  };
+
+  handleRemoteStreamAdded = event => {
+    console.log('Remote stream added.');
     this.setState({
-      remoteStream: null,
+      remoteStream: event.stream,
+    });
+    // remoteStream = event.stream;
+    // remoteVideo.srcObject = remoteStream;
+  };
+
+  handleRemoteStreamRemoved = event => {
+    console.log('Remote stream removed. Event: ', event);
+  };
+
+  hangup = () => {
+    console.log('Hanging up.');
+    this.stop();
+    this.sendMessage('bye');
+  };
+
+  handleRemoteHangup = () => {
+    console.log('Session terminated.');
+    this.stop();
+    this.setState({
+      isInitiator: false,
+    });
+  };
+
+  stop = () => {
+    this.setState({
+      isStarted: false,
     });
     this.pc.close();
-    this.pc.onicecandidate = null;
-    this.pc.onaddstream = null;
+    this.pc = null;
   };
-
-  connectSocket = () => {
-    console.log('connectSocket');
-    this.socket = io.connect('http://192.168.8.103:3000', {transports: ['websocket']});
-    this.socket.on('connect', () => {
-      this.loginUser();
-      this.setState({
-        socketConnected: true,
-      });
-    });
-    this.socket.on('login',() => this.loginUser());
-    this.socket.on('offer', data => this.handleOffer(data));
-    this.socket.on('answer', data => this.handleAnswer(data));
-    this.socket.on('disconnect', () => this.closeSocket());
-  };
-
-  // miscellaneous
-
-  loginUser = () => {
-    console.log('loginUser');
-    this.socket.emit('login', {
-      type: 'login',
-      userID: this.state.userID,
-      name: this.state.userID === 1 ? 'Sim7' : 'Sim8' ,
-    });
-  };
-
 
   captureMedia = () => {
     // console.log('captureMedia');
@@ -167,6 +237,7 @@ class Broadcast extends Component {
           video: true,
         })
         .then(stream => {
+          this.gotStream(stream);
           resolve(stream);
         })
         .catch(() => {
@@ -175,51 +246,20 @@ class Broadcast extends Component {
     });
   };
 
-  broadcast = () => {
-    console.log('broadcast');
-    // 1 - capture Media
-    // 2 - add stream
-    // 3 - create offer
-    this.captureMedia().then(stream => {
-      // this.connectSocket();
-      this.pc.addStream(stream);
-      this.setState({
-        initialized: true,
-        stream: stream,
-      },() => {
-        this.createOffer();
-      });
-    });
-  };
-
-  createUniqueID = () => {
-    const s4 = () => {
-      return Math.floor((1 + Math.random()) * 0x10000)
-        .toString(16)
-        .substring(1);
-    };
-    return s4() + s4() + '-' + s4() + '-' + s4() + '-' + s4() + '-' + s4() + s4() + s4();
-  };
-
-  logError = e => {
-    console.log('e', e);
-  };
-
-  toggleUsername = () => {
-    this.setState({
-      userID: this.state.userID === 1 ? 2 : 1,
-    });
-  };
-
   render() {
+    console.log('this.state', this.state);
+
+    if (this.state.localStream === null) {
+      this.captureMedia();
+    }
+
+    // return null;
     // console.log('this.state', this.state);
     return (
       <View style={styles.container}>
-        {this.state.initialized && (
-          <View style={styles.videoContainer}>
-            <RTCView streamURL={this.state.stream.toURL()} style={styles.selfView} />
-          </View>
-        )}
+        <View style={styles.videoContainer}>
+          <RTCView streamURL={this.state.localStream} style={styles.selfView} />
+        </View>
 
         {this.state.socketConnected && (
           <TouchableHighlight onPress={this.broadcast} style={styles.button}>
@@ -231,13 +271,13 @@ class Broadcast extends Component {
           <RTCView streamURL={this.state.remoteStream.toURL()} style={styles.selfView} />
         )}
 
-        <Text style={styles.toggleButton}> User : {this.state.userID}</Text>
+        {/*<Text style={styles.toggleButton}> User : {this.state.userID}</Text>*/}
 
-        <View style={styles.connectButtonContainer}>
-          <Text onPress={this.toggleUsername} style={styles.toggleButton}>
-            Toggle user
-          </Text>
-        </View>
+        {/*<View style={styles.connectButtonContainer}>*/}
+        {/*  <Text onPress={this.toggleUsername} style={styles.toggleButton}>*/}
+        {/*    Toggle user*/}
+        {/*  </Text>*/}
+        {/*</View>*/}
 
         <View style={styles.connectButtonContainer}>
           <Text style={styles.toggleButton} onPress={this.connectSocket}>
@@ -245,6 +285,11 @@ class Broadcast extends Component {
           </Text>
         </View>
 
+        {/*<View style={styles.connectButtonContainer}>*/}
+        {/*  <Text style={styles.toggleButton} onPress={this.joinRoom}>*/}
+        {/*    Join Room*/}
+        {/*  </Text>*/}
+        {/*</View>*/}
       </View>
     );
   }

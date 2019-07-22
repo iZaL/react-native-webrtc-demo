@@ -56,7 +56,7 @@ class Broadcast extends Component {
   };
 
   gotIceCandidate = event => {
-    console.log('got ice candidate',event);
+    console.log('got ice candidate', event);
     this.pc.addIceCandidate(new RTCIceCandidate(event.candidate));
     // if (event && event.candidate) {
     //   const params = {
@@ -116,7 +116,7 @@ class Broadcast extends Component {
     this.socket.emit('login', {
       type: 'login',
       userID: this.state.userID,
-      name: this.state.userID === 1 ? 'Sim7' : 'Sim8' ,
+      name: this.state.userID === 1 ? 'Sim7' : 'Sim8',
     });
   };
 
@@ -144,16 +144,19 @@ class Broadcast extends Component {
     // if not peerconnection, set peer connection
     let offer = data.offer;
 
-    if(this.state.userID === data.userID) {
+    if (this.state.userID === data.userID) {
       console.log('same user');
     } else {
       if (offer.sdp) {
         console.log('yes it is sdp');
-        this.pc.setRemoteDescription(new RTCSessionDescription(offer)).then(()=>{
-          console.log('setted remote description');
-        }).catch((e) => {
-          console.log('Error setting remote description',e);
-        });
+        this.pc
+          .setRemoteDescription(new RTCSessionDescription(offer))
+          .then(() => {
+            console.log('setted remote description');
+          })
+          .catch(e => {
+            console.log('Error setting remote description', e);
+          });
         // this.pc
         //   .createAnswer()
         //   .then(answer => {
@@ -187,8 +190,6 @@ class Broadcast extends Component {
         // this.pc.addIceCandidate(new RTCIceCandidate(offer.ice));
       }
     }
-
-
   };
 
   handleAnswer = answer => {
@@ -268,7 +269,6 @@ class Broadcast extends Component {
       });
 
       this.pc.addStream(this.state.stream);
-
     });
 
     this.socket.on('login', data => {
@@ -483,7 +483,6 @@ class Broadcast extends Component {
             Connect to socket{' '}
           </Text>
         </View>
-
       </View>
     );
   }

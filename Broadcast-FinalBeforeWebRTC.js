@@ -9,7 +9,7 @@ import {
   RTCSessionDescription,
   RTCView,
   MediaStream,
-  MediaStreamTrack
+  MediaStreamTrack,
 } from 'react-native-webrtc';
 
 class Broadcast extends Component {
@@ -41,8 +41,8 @@ class Broadcast extends Component {
 
   onIceCandidate = event => {
     this.pc.addIceCandidate(new RTCIceCandidate(event.candidate));
-    this.socket.send('candidate',{
-      candidate:event.candidate
+    this.socket.send('candidate', {
+      candidate: event.candidate,
     });
   };
 
@@ -78,13 +78,13 @@ class Broadcast extends Component {
   handleOffer = data => {
     console.log('handleOffer');
     let offer = data.offer;
-    if(this.state.userID !== data.userID) {
+    if (this.state.userID !== data.userID) {
       console.log('same user');
     } else {
       if (offer.sdp) {
         // console.log('yes it is sdp');
         this.pc.setRemoteDescription(offer);
-        if(offer.type === 'offer') {
+        if (offer.type === 'offer') {
           this.createAnswer();
         }
       } else if (offer.ice) {
@@ -96,17 +96,20 @@ class Broadcast extends Component {
 
   createAnswer = () => {
     console.log('createAnswer');
-    this.pc.createAnswer().then((answer) => {
-      // this.pc.setLocalDescription(answer);
-      this.pc.setLocalDescription(answer);
-      this.socket.emit('answer', {
-        answer: answer,
-        userID: this.state.userID,
-        remoteUserID: this.state.userID === 1 ? 2 : 1,
+    this.pc
+      .createAnswer()
+      .then(answer => {
+        // this.pc.setLocalDescription(answer);
+        this.pc.setLocalDescription(answer);
+        this.socket.emit('answer', {
+          answer: answer,
+          userID: this.state.userID,
+          remoteUserID: this.state.userID === 1 ? 2 : 1,
+        });
+      })
+      .catch(e => {
+        console.log('Error: createAnswer', e);
       });
-    }).catch((e) => {
-      console.log('Error: createAnswer',e);
-    });
   };
 
   handleAnswer = answer => {
@@ -140,7 +143,7 @@ class Broadcast extends Component {
         socketConnected: true,
       });
     });
-    this.socket.on('login',() => this.loginUser());
+    this.socket.on('login', () => this.loginUser());
     this.socket.on('offer', data => this.handleOffer(data));
     this.socket.on('answer', data => this.handleAnswer(data));
     this.socket.on('disconnect', () => this.closeSocket());
@@ -153,10 +156,9 @@ class Broadcast extends Component {
     this.socket.emit('login', {
       type: 'login',
       userID: this.state.userID,
-      name: this.state.userID === 1 ? 'Sim7' : 'Sim8' ,
+      name: this.state.userID === 1 ? 'Sim7' : 'Sim8',
     });
   };
-
 
   captureMedia = () => {
     // console.log('captureMedia');
@@ -183,12 +185,15 @@ class Broadcast extends Component {
     this.captureMedia().then(stream => {
       // this.connectSocket();
       this.pc.addStream(stream);
-      this.setState({
-        initialized: true,
-        stream: stream,
-      },() => {
-        this.createOffer();
-      });
+      this.setState(
+        {
+          initialized: true,
+          stream: stream,
+        },
+        () => {
+          this.createOffer();
+        },
+      );
     });
   };
 
@@ -244,7 +249,6 @@ class Broadcast extends Component {
             Connect to socket{' '}
           </Text>
         </View>
-
       </View>
     );
   }

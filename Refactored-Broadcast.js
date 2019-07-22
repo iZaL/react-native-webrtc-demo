@@ -73,7 +73,6 @@ class Broadcast extends Component {
   //   });
   // };
 
-
   loginUser = () => {
     console.log('loginUser');
 
@@ -176,16 +175,17 @@ class Broadcast extends Component {
   };
 
   handleOffer = (offer, name) => {
-    console.log('handleOffer',name);
+    console.log('handleOffer', name);
 
-    if(name == 'afzal') {
+    if (name == 'afzal') {
       console.log('same user');
       return;
     }
-      // connectedUser = name;
-    this.pc.setRemoteDescription(new RTCSessionDescription(offer))
-      .then(()=>this.createAnswer())
-      .catch((e) => console.log('Error : setRemoteDescription',e));
+    // connectedUser = name;
+    this.pc
+      .setRemoteDescription(new RTCSessionDescription(offer))
+      .then(() => this.createAnswer())
+      .catch(e => console.log('Error : setRemoteDescription', e));
   };
 
   // handleOffer = (offer, name) =>{
@@ -255,12 +255,15 @@ class Broadcast extends Component {
     this.captureMedia().then(stream => {
       // this.connectSocket();
       this.pc.addStream(stream);
-      this.setState({
-        initialized: true,
-        stream: stream,
-      },() => {
-        this.createOffer();
-      });
+      this.setState(
+        {
+          initialized: true,
+          stream: stream,
+        },
+        () => {
+          this.createOffer();
+        },
+      );
       // this.createOffer();
       // this.startPeerConnection(stream);
     });
@@ -298,8 +301,8 @@ class Broadcast extends Component {
           // return (
           <RTCView streamURL={this.state.remoteStream.toURL()} style={styles.selfView} />
         )
-          // );
-          // })
+        // );
+        // })
         }
       </View>
     );
