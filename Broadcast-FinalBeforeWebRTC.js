@@ -19,7 +19,7 @@ class Broadcast extends Component {
       initialized: false,
       stream: null,
       connectionID: this.createUniqueID(),
-      socketURL: 'http://localhost:8080',
+      socketURL: 'wss://localhost:3000',
       remoteStream: null,
       userID: 1,
       socketConnected: false,
