@@ -283,7 +283,7 @@ class Broadcast extends Component {
 
         <View style={styles.connectButtonContainer}>
           <Text style={styles.toggleButton} onPress={this.joinRoom}>
-            Connect to socket{' '}
+            Join Room
           </Text>
         </View>
 
