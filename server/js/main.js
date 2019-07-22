@@ -9,17 +9,15 @@ var remoteStream;
 var turnReady;
 
 var pcConfig = {
-  iceServers: [
-    {
-      urls: 'stun:stun.l.google.com:19302',
-    },
-  ],
+  'iceServers': [{
+    'urls': 'stun:stun.l.google.com:19302'
+  }]
 };
 
 // Set up audio and video regardless of what devices are present.
 var sdpConstraints = {
   offerToReceiveAudio: true,
-  offerToReceiveVideo: true,
+  offerToReceiveVideo: true
 };
 
 /////////////////////////////////////////////
@@ -44,7 +42,7 @@ socket.on('full', function(room) {
   console.log('Room ' + room + ' is full');
 });
 
-socket.on('join', function(room) {
+socket.on('join', function (room){
   console.log('Another peer made a request to join room ' + room);
   console.log('This peer is the initiator of room ' + room + '!');
   isChannelReady = true;
@@ -82,7 +80,7 @@ socket.on('message', function(message) {
   } else if (message.type === 'candidate' && isStarted) {
     var candidate = new RTCIceCandidate({
       sdpMLineIndex: message.label,
-      candidate: message.candidate,
+      candidate: message.candidate
     });
     pc.addIceCandidate(candidate);
   } else if (message === 'bye' && isStarted) {
@@ -95,15 +93,14 @@ socket.on('message', function(message) {
 var localVideo = document.querySelector('#localVideo');
 var remoteVideo = document.querySelector('#remoteVideo');
 
-navigator.mediaDevices
-  .getUserMedia({
-    audio: false,
-    video: true,
-  })
-  .then(gotStream)
-  .catch(function(e) {
-    alert('getUserMedia() error: ' + e.name);
-  });
+navigator.mediaDevices.getUserMedia({
+  audio: false,
+  video: true
+})
+.then(gotStream)
+.catch(function(e) {
+  alert('getUserMedia() error: ' + e.name);
+});
 
 function gotStream(stream) {
   console.log('Adding local stream.');
@@ -116,13 +113,15 @@ function gotStream(stream) {
 }
 
 var constraints = {
-  video: true,
+  video: true
 };
 
 console.log('Getting user media with constraints', constraints);
 
 if (location.hostname !== 'localhost') {
-  requestTurn('https://computeengineondemand.appspot.com/turn?username=41784574&key=4080218913');
+  requestTurn(
+    'https://computeengineondemand.appspot.com/turn?username=41784574&key=4080218913'
+  );
 }
 
 function maybeStart() {
@@ -166,7 +165,7 @@ function handleIceCandidate(event) {
       type: 'candidate',
       label: event.candidate.sdpMLineIndex,
       id: event.candidate.sdpMid,
-      candidate: event.candidate.candidate,
+      candidate: event.candidate.candidate
     });
   } else {
     console.log('End of candidates.');
@@ -184,7 +183,10 @@ function doCall() {
 
 function doAnswer() {
   console.log('Sending answer to peer.');
-  pc.createAnswer().then(setLocalAndSendMessage, onCreateSessionDescriptionError);
+  pc.createAnswer().then(
+    setLocalAndSendMessage,
+    onCreateSessionDescriptionError
+  );
 }
 
 function setLocalAndSendMessage(sessionDescription) {
@@ -215,8 +217,8 @@ function requestTurn(turnURL) {
         var turnServer = JSON.parse(xhr.responseText);
         console.log('Got TURN server: ', turnServer);
         pcConfig.iceServers.push({
-          urls: 'turn:' + turnServer.username + '@' + turnServer.turn,
-          credential: turnServer.password,
+          'urls': 'turn:' + turnServer.username + '@' + turnServer.turn,
+          'credential': turnServer.password
         });
         turnReady = true;
       }

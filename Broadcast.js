@@ -29,13 +29,12 @@ class Broadcast extends Component {
     // this.joinRoom();
   }
 
-
   connectSocket = () => {
     console.log('connectSocket');
     this.socket = io.connect('http://192.168.8.102:3000', {transports: ['websocket']});
 
     this.socket.on('connect', () => {
-      this.joinRoom();
+      // this.joinRoom();
     });
 
     this.socket.on('created', room => {
@@ -280,8 +279,8 @@ class Broadcast extends Component {
         {/*</View>*/}
 
         <View style={styles.connectButtonContainer}>
-          <Text style={styles.toggleButton} onPress={this.connectSocket}>
-            Connect to socket{' '}
+          <Text style={styles.toggleButton} onPress={this.joinRoom}>
+            Join Room
           </Text>
         </View>
 
