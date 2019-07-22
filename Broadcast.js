@@ -10,6 +10,7 @@ import {
 } from 'react-native-webrtc';
 
 class Broadcast extends Component {
+
   constructor(props) {
     super(props);
     this.state = {
@@ -21,28 +22,27 @@ class Broadcast extends Component {
       remoteStream: null,
       turnReady: null,
       room: 'foo',
+      socketURL:'http://192.168.8.102:3000'
     };
   }
 
   componentDidMount(): void {
     this.connectSocket();
-    // this.joinRoom();
   }
-
 
   connectSocket = () => {
     console.log('connectSocket');
-    this.socket = io.connect('http://192.168.8.102:3000', {transports: ['websocket']});
+
+    this.socket = io.connect(this.state.socketURL, {transports: ['websocket']});
 
     this.socket.on('connect', () => {
-      this.joinRoom();
+      // this.joinRoom();
     });
 
     this.socket.on('created', room => {
       console.log('Created room ' + room);
       this.setState({
         isInitiator: true,
-      },()=>{
       });
     });
 
@@ -74,7 +74,7 @@ class Broadcast extends Component {
 
       let {isInitiator, isStarted} = this.state;
 
-      if (message === 'got user media') {
+      if (message === 'got_media') {
         this.maybeStart();
       } else if (message.type === 'offer') {
         if (!isInitiator && !isStarted) {
@@ -100,7 +100,7 @@ class Broadcast extends Component {
 
   joinRoom = () => {
     let {room} = this.state;
-    this.socket.emit('create or join', room);
+    this.socket.emit('create_join', room);
     console.log('Attempted to create or  join room', room);
   };
 
@@ -280,7 +280,7 @@ class Broadcast extends Component {
         {/*</View>*/}
 
         <View style={styles.connectButtonContainer}>
-          <Text style={styles.toggleButton} onPress={this.connectSocket}>
+          <Text style={styles.toggleButton} onPress={this.joinRoom}>
             Connect to socket{' '}
           </Text>
         </View>

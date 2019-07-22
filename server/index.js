@@ -14,12 +14,13 @@ app.get('/', function(req, res) {
 app.use(express.static(path.join(__dirname, '/js')));
 app.use(express.static(path.join(__dirname, '/css')));
 
-server.listen(3000, function() {
+server.listen(3000,function(){
   console.log('listening on port 3000');
 });
 
 io.sockets.on('connection', function(socket) {
-  console.log('connected', socket.id);
+
+  console.log('connected',socket.id);
   log('Client connected to socket : ', socket.id);
 
   // convenience function to log server messages on the client
@@ -35,7 +36,7 @@ io.sockets.on('connection', function(socket) {
     socket.broadcast.to('foo').emit('message', message);
   });
 
-  socket.on('create or join', function(room) {
+  socket.on('create_join', function(room) {
     log('Received request to create or join room ' + room);
 
     let clientsInRoom = io.sockets.adapter.rooms[room];
@@ -46,14 +47,14 @@ io.sockets.on('connection', function(socket) {
       socket.join(room);
       log('Client ID ' + socket.id + ' created room ' + room);
       socket.emit('created', room, socket.id);
+
     } else if (numClients === 1) {
       log('Client ID ' + socket.id + ' joined room ' + room);
       io.sockets.in(room).emit('join', room);
       socket.join(room);
       socket.emit('joined', room, socket.id);
       io.sockets.in(room).emit('ready');
-    } else {
-      // max two clients
+    } else { // max two clients
       socket.emit('full', room);
     }
   });
@@ -69,7 +70,11 @@ io.sockets.on('connection', function(socket) {
     }
   });
 
-  socket.on('bye', function() {
+  socket.on('bye', function(){
     console.log('received bye');
+  });
+
+  socket.on('disconnect', function () {
+    console.log('disconnected', socket.id);
   });
 });

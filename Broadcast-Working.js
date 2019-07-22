@@ -171,18 +171,7 @@ class Broadcast extends Component {
         });
       })
       .catch(e => console.log('err', e));
-    // .then(err => console.log('err', err));
   };
-
-  // handleOffer = (offer, name) =>{
-  //   // connectedUser = name;
-  //   this.pc.setRemoteDescription(new RTCSessionDescription(offer)).then(()=> {
-  //     this.pc.createAnswer().then((desc) => this.pc.setLocalDescription(desc));
-  //   }).catch((e)=>{
-  //     console.log('handle offer error',e);
-  //   });
-  //   //create an answer to an offer
-  // };
 
   //when we got an answer from a remote user
   handleAnswer = answer => {

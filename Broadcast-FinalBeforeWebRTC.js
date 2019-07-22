@@ -1,16 +1,7 @@
 import React, {Component} from 'react';
-import {StyleSheet, Text, TextInput, TouchableHighlight, View} from 'react-native';
-
+import {StyleSheet, Text, TouchableHighlight, View} from 'react-native';
 import io from 'socket.io-client';
-import {
-  mediaDevices,
-  RTCIceCandidate,
-  RTCPeerConnection,
-  RTCSessionDescription,
-  RTCView,
-  MediaStream,
-  MediaStreamTrack,
-} from 'react-native-webrtc';
+import {mediaDevices, RTCIceCandidate, RTCPeerConnection, RTCSessionDescription, RTCView} from 'react-native-webrtc';
 
 class Broadcast extends Component {
   constructor(props) {
@@ -179,9 +170,6 @@ class Broadcast extends Component {
 
   broadcast = () => {
     console.log('broadcast');
-    // 1 - capture Media
-    // 2 - add stream
-    // 3 - create offer
     this.captureMedia().then(stream => {
       // this.connectSocket();
       this.pc.addStream(stream);
