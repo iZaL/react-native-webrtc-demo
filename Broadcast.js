@@ -33,7 +33,9 @@ class Broadcast extends Component {
   connectSocket = () => {
     console.log('connectSocket');
 
-    this.socket = io.connect(this.state.socketURL, {transports: ['websocket']});
+    this.socket = io.connect(this.state.socketURL, {
+      transports: ['websocket'],
+    });
 
     this.socket.on('connect', () => {
       // this.joinRoom();
