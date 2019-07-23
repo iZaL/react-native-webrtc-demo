@@ -20,6 +20,7 @@ server.listen(3000,function(){
 
 io.sockets.on('connection', function(socket) {
 
+
   console.log('connected',socket.id);
   log('Client connected to socket : ', socket.id);
 
@@ -76,5 +77,10 @@ io.sockets.on('connection', function(socket) {
 
   socket.on('disconnect', function () {
     console.log('disconnected', socket.id);
+    // socket.broadcast.emit('bye');
+    // socket.emit('bye');
+    // io.sockets.in('foo').emit('bye');
+    // socket.broadcast.to('foo').emit('bye');
+    io.sockets.emit('message','bye');
   });
 });

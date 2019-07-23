@@ -33,7 +33,8 @@ class Broadcast extends Component {
   }
 
   componentWillUnmount(): void {
-    this.sendMessage('bye');
+    alert('exits');
+    // this.hangup();
   }
 
   connectSocket = () => {
@@ -230,19 +231,26 @@ class Broadcast extends Component {
   handleRemoteHangup = () => {
     console.log('Session terminated.');
     // this.stop();
+
+    if(!this.state.isInitiator) {
+      this.stop();
+    }
+    // if isinitator
     this.setState({
-      // isInitiator: false,
       remoteStream:null,
       isStarted: false,
     });
+
   };
 
   stop = () => {
     this.setState({
+      localStream:null,
       isStarted: false,
     });
     this.pc.close();
     this.pc = null;
+    alert('Session Terminated');
   };
 
   joinRoom = () => {

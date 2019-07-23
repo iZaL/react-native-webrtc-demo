@@ -136,7 +136,7 @@ function maybeStart() {
 }
 
 window.onbeforeunload = function() {
-  sendMessage('bye');
+  // sendMessage('bye');
 };
 
 /////////////////////////////////////////////////////////
@@ -244,14 +244,18 @@ function hangup() {
 function handleRemoteHangup() {
   console.log('Session terminated.');
   // stop();
-  isInitiator = false;
   isStarted = false;
-  localStream = null;
-  localVideo.srcObject = null;
+  remoteStream = null;
+  if(!isInitiator) {
+    //not initiator
+    stop();
+  }
 }
 
 function stop() {
   isStarted = false;
+  localStream=null;
   pc.close();
   pc = null;
+  alert('Session Terminated');
 }
