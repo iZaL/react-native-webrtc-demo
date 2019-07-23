@@ -57,13 +57,6 @@ socket.on('log', function(array) {
   console.log.apply(console, array);
 });
 
-////////////////////////////////////////////////
-
-function sendMessage(message) {
-  console.log('Client sending message: ', message);
-  socket.emit('message', message);
-}
-
 // This client receives a message
 socket.on('message', function(message) {
   console.log('Client received message:', message);
@@ -89,9 +82,13 @@ socket.on('message', function(message) {
 });
 
 ////////////////////////////////////////////////////
-
 var localVideo = document.querySelector('#localVideo');
 var remoteVideo = document.querySelector('#remoteVideo');
+////////////////////////////////////////////////
+function sendMessage(message) {
+  console.log('Client sending message: ', message);
+  socket.emit('message', message);
+}
 
 navigator.mediaDevices.getUserMedia({
   audio: false,
@@ -246,8 +243,11 @@ function hangup() {
 
 function handleRemoteHangup() {
   console.log('Session terminated.');
-  stop();
+  // stop();
   isInitiator = false;
+  isStarted = false;
+  localStream = null;
+  localVideo.srcObject = null;
 }
 
 function stop() {

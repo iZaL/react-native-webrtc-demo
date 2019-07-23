@@ -28,6 +28,12 @@ class Broadcast extends Component {
 
   componentDidMount(): void {
     this.connectSocket();
+    this.captureMedia();
+    // this.joinRoom();
+  }
+
+  componentWillUnmount(): void {
+    this.sendMessage('bye');
   }
 
   connectSocket = () => {
@@ -99,35 +105,40 @@ class Broadcast extends Component {
   };
 
   ////////////////////////////////////////////////
-
-  joinRoom = () => {
-    let {room} = this.state;
-    this.socket.emit('create_join', room);
-    console.log('Attempted to create or  join room', room);
-  };
-
   sendMessage = message => {
     console.log('Client sending message: ', message);
     this.socket.emit('message', message);
   };
-  // miscellaneous
+
+  captureMedia = () => {
+    console.log('captureMedia');
+    mediaDevices
+      .getUserMedia({
+        audio: true,
+        video: true,
+      })
+      .then(stream => {
+        this.gotStream(stream);
+      })
+      .catch((e) => {
+        console.log('Error capturing media',e);
+      });
+  };
 
   gotStream = stream => {
     console.log('Adding local stream.', stream);
-    // localStream = stream;
-    // localVideo.srcObject = stream;
     this.setState({
       localStream: stream,
     });
-    this.sendMessage('got user media');
+    this.sendMessage('got_media');
     if (this.state.isInitiator) {
       this.maybeStart();
     }
   };
 
+  // miscellaneous
   maybeStart = () => {
     let {isStarted, localStream, isChannelReady, isInitiator} = this.state;
-
     console.log('>>>>>>> maybeStart() ', isStarted, localStream, isChannelReady);
     if (!isStarted && typeof localStream !== 'undefined' && isChannelReady) {
       console.log('>>>>>> creating peer connection');
@@ -143,9 +154,13 @@ class Broadcast extends Component {
     }
   };
 
+  /////////////////////////////////////////////////////////
+
   createPeerConnection = () => {
     try {
-      this.pc = new RTCPeerConnection(null);
+      const configuration = {iceServers: [{url: 'stun:stun.l.google.com:19302'}]};
+
+      this.pc = new RTCPeerConnection(configuration);
       this.pc.onicecandidate = this.handleIceCandidate;
       this.pc.onaddstream = this.handleRemoteStreamAdded;
       this.pc.onremovestream = this.handleRemoteStreamRemoved;
@@ -182,7 +197,7 @@ class Broadcast extends Component {
 
   doAnswer = () => {
     console.log('Sending answer to peer.');
-    this.pc.createAnswer().then(this.setLocalAndSendMessage, this.onCreateSessionDescriptionError);
+    this.pc.createAnswer().then(this.setLocalAndSendMessage).catch(this.onCreateSessionDescriptionError);
   };
 
   setLocalAndSendMessage = sessionDescription => {
@@ -200,8 +215,6 @@ class Broadcast extends Component {
     this.setState({
       remoteStream: event.stream,
     });
-    // remoteStream = event.stream;
-    // remoteVideo.srcObject = remoteStream;
   };
 
   handleRemoteStreamRemoved = event => {
@@ -216,9 +229,11 @@ class Broadcast extends Component {
 
   handleRemoteHangup = () => {
     console.log('Session terminated.');
-    this.stop();
+    // this.stop();
     this.setState({
-      isInitiator: false,
+      // isInitiator: false,
+      remoteStream:null,
+      isStarted: false,
     });
   };
 
@@ -230,37 +245,22 @@ class Broadcast extends Component {
     this.pc = null;
   };
 
-  captureMedia = () => {
-    // console.log('captureMedia');
-    return new Promise((resolve, reject) => {
-      mediaDevices
-        .getUserMedia({
-          audio: true,
-          video: true,
-        })
-        .then(stream => {
-          this.gotStream(stream);
-          resolve(stream);
-        })
-        .catch(() => {
-          reject(new Error('Failed to add ICE candidate'));
-        });
-    });
+  joinRoom = () => {
+    let {room} = this.state;
+    this.socket.emit('create_join', room);
+    console.log('Attempted to create or  join room', room);
   };
 
   render() {
     console.log('this.state', this.state);
 
-    if (this.state.localStream === null) {
-      this.captureMedia();
-    }
 
     // return null;
     // console.log('this.state', this.state);
     return (
       <View style={styles.container}>
         <View style={styles.videoContainer}>
-          <RTCView streamURL={this.state.localStream} style={styles.selfView} />
+          {/*<RTCView streamURL={this.state.localStream} style={styles.selfView} />*/}
         </View>
 
         {this.state.socketConnected && (
