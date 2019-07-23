@@ -22,7 +22,7 @@ class Broadcast extends Component {
       remoteStream: null,
       turnReady: null,
       room: 'foo',
-      socketURL:'http://192.168.8.102:3000'
+      socketURL:'http://192.168.8.104:3000'
     };
   }
 
@@ -115,7 +115,7 @@ class Broadcast extends Component {
     console.log('captureMedia');
     mediaDevices
       .getUserMedia({
-        audio: true,
+        audio: false,
         video: true,
       })
       .then(stream => {
@@ -261,8 +261,6 @@ class Broadcast extends Component {
 
   render() {
     console.log('this.state', this.state);
-
-
     // return null;
     // console.log('this.state', this.state);
     return (
@@ -289,11 +287,11 @@ class Broadcast extends Component {
         {/*  </Text>*/}
         {/*</View>*/}
 
-        <View style={styles.connectButtonContainer}>
-          <Text style={styles.toggleButton} onPress={this.joinRoom}>
-            Join Room
-          </Text>
-        </View>
+        {/*<View style={styles.connectButtonContainer}>*/}
+        {/*  <Text style={styles.toggleButton} onPress={this.joinRoom}>*/}
+        {/*    Join Room*/}
+        {/*  </Text>*/}
+        {/*</View>*/}
 
         {/*<View style={styles.connectButtonContainer}>*/}
         {/*  <Text style={styles.toggleButton} onPress={this.joinRoom}>*/}
