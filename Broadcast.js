@@ -272,36 +272,6 @@ class Broadcast extends Component {
             <RTCView streamURL={this.state.localStream.toURL()} style={styles.selfView} />
           }
         </View>
-
-        {this.state.socketConnected && (
-          <TouchableHighlight onPress={this.broadcast} style={styles.button}>
-            <Text style={styles.buttonText}>Broadcast</Text>
-          </TouchableHighlight>
-        )}
-
-        {/*{this.state.remoteStream !== null && (*/}
-        {/*  <RTCView streamURL={this.state.remoteStream.toURL()} style={styles.selfView} />*/}
-        {/*)}*/}
-
-        {/*<Text style={styles.toggleButton}> User : {this.state.userID}</Text>*/}
-
-        {/*<View style={styles.connectButtonContainer}>*/}
-        {/*  <Text onPress={this.toggleUsername} style={styles.toggleButton}>*/}
-        {/*    Toggle user*/}
-        {/*  </Text>*/}
-        {/*</View>*/}
-
-        {/*<View style={styles.connectButtonContainer}>*/}
-        {/*  <Text style={styles.toggleButton} onPress={this.joinRoom}>*/}
-        {/*    Join Room*/}
-        {/*  </Text>*/}
-        {/*</View>*/}
-
-        {/*<View style={styles.connectButtonContainer}>*/}
-        {/*  <Text style={styles.toggleButton} onPress={this.joinRoom}>*/}
-        {/*    Join Room*/}
-        {/*  </Text>*/}
-        {/*</View>*/}
       </View>
     );
   }
