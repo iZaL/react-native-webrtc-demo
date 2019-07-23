@@ -2,7 +2,6 @@ import React, {Component} from 'react';
 import {StyleSheet, Text, TouchableHighlight, View} from 'react-native';
 import io from 'socket.io-client';
 import {
-  mediaDevices,
   RTCIceCandidate,
   RTCPeerConnection,
   RTCSessionDescription,
@@ -28,13 +27,7 @@ class Connect extends Component {
 
   componentDidMount(): void {
     this.connectSocket();
-    this.captureMedia();
-    // this.joinRoom();
-  }
-
-  componentWillUnmount(): void {
-    alert('exits');
-    // this.hangup();
+    this.fakeCaptureMedia();
   }
 
   connectSocket = () => {
@@ -72,6 +65,7 @@ class Connect extends Component {
       this.setState({
         isChannelReady: true,
       });
+      this.maybeStart();
     });
 
     this.socket.on('log', array => {
@@ -111,26 +105,9 @@ class Connect extends Component {
     this.socket.emit('message', message);
   };
 
-  captureMedia = () => {
+  fakeCaptureMedia = () => {
     console.log('captureMedia');
-    mediaDevices
-      .getUserMedia({
-        audio: false,
-        video: false,
-      })
-      .then(stream => {
-        this.gotStream(stream);
-      })
-      .catch((e) => {
-        console.log('Error capturing media',e);
-      });
-  };
-
-  gotStream = stream => {
-    console.log('Adding local stream.', stream);
-    this.setState({
-      localStream: stream,
-    });
+    // do not capture as this is one way streaming. i.e only to watch the broadcast
     this.sendMessage('got_media');
     if (this.state.isInitiator) {
       this.maybeStart();
@@ -164,11 +141,6 @@ class Connect extends Component {
       this.pc.onicecandidate = this.handleIceCandidate;
       this.pc.onaddstream = this.handleRemoteStreamAdded;
       this.pc.onremovestream = this.handleRemoteStreamRemoved;
-      // this.pc.sdpConstraints.mandatory = {
-      //   OfferToReceiveAudio: false,
-      //   OfferToReceiveVideo: false,
-      // };
-
       console.log('Created RTCPeerConnnection');
     } catch (e) {
       console.log('Failed to create PeerConnection, exception: ' + e.message);
@@ -197,17 +169,8 @@ class Connect extends Component {
   doCall = () => {
     console.log('Sending offer to peer');
     this.pc.createOffer({
-      offerToReceiveAudio: false,
-      offerToReceiveVideo: false,
-      // OfferToReceiveAudio: false,
-      // OfferToReceiveVideo: false,
-      // mandatory: {
-      //   OfferToReceiveAudio: false,
-      //   OfferToReceiveVideo: false,
-      //   offerToReceiveAudio: false,
-      //   offerToReceiveVideo: false,
-      // },
-
+      offerToReceiveAudio: true,
+      offerToReceiveVideo: true,
     }).then(this.setLocalAndSendMessage).catch(this.handleCreateOfferError);
   };
 
@@ -297,13 +260,13 @@ class Connect extends Component {
           <RTCView streamURL={this.state.remoteStream.toURL()} style={styles.selfView} />
         )}
 
-        <Text style={styles.toggleButton}> User : {this.state.userID}</Text>
+        {/*<Text style={styles.toggleButton}> User : {this.state.userID}</Text>*/}
 
-        <View style={styles.connectButtonContainer}>
-          <Text onPress={this.toggleUsername} style={styles.toggleButton}>
-            Toggle user
-          </Text>
-        </View>
+        {/*<View style={styles.connectButtonContainer}>*/}
+        {/*  <Text onPress={this.toggleUsername} style={styles.toggleButton}>*/}
+        {/*    Toggle user*/}
+        {/*  </Text>*/}
+        {/*</View>*/}
 
         {/*<View style={styles.connectButtonContainer}>*/}
         {/*  <Text style={styles.toggleButton} onPress={this.joinRoom}>*/}

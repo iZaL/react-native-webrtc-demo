@@ -193,15 +193,7 @@ class Broadcast extends Component {
     console.log('Sending offer to peer');
     this.pc.createOffer({
       offerToReceiveAudio: false,
-      offerToReceiveVideo: false,
-      // OfferToReceiveAudio: false,
-      // OfferToReceiveVideo: false,
-      // mandatory: {
-      //   OfferToReceiveAudio: false,
-      //   OfferToReceiveVideo: false,
-      //   offerToReceiveAudio: false,
-      //   offerToReceiveVideo: false,
-      // },
+      offerToReceiveVideo: false
     }).then(this.setLocalAndSendMessage).catch(this.handleCreateOfferError);
   };
 
