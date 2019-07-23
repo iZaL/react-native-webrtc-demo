@@ -237,48 +237,15 @@ class Connect extends Component {
     console.log('Attempted to create or  join room', room);
   };
 
-  toggleUsername = () => {
-  };
-
   render() {
     console.log('this.state', this.state);
-    // return null;
-    // console.log('this.state', this.state);
     return (
       <View style={styles.container}>
-        <View style={styles.videoContainer}>
-          {/*<RTCView streamURL={this.state.localStream} style={styles.selfView} />*/}
-        </View>
-
-        {this.state.socketConnected && (
-          <TouchableHighlight onPress={this.broadcast} style={styles.button}>
-            <Text style={styles.buttonText}>Broadcast</Text>
-          </TouchableHighlight>
-        )}
-
-        {this.state.remoteStream !== null && (
+        {this.state.remoteStream !== null ? (
           <RTCView streamURL={this.state.remoteStream.toURL()} style={styles.selfView} />
+          ): (
+          <Text style={styles.alertText}>Remote Video will appear here once ready</Text>
         )}
-
-        {/*<Text style={styles.toggleButton}> User : {this.state.userID}</Text>*/}
-
-        {/*<View style={styles.connectButtonContainer}>*/}
-        {/*  <Text onPress={this.toggleUsername} style={styles.toggleButton}>*/}
-        {/*    Toggle user*/}
-        {/*  </Text>*/}
-        {/*</View>*/}
-
-        {/*<View style={styles.connectButtonContainer}>*/}
-        {/*  <Text style={styles.toggleButton} onPress={this.joinRoom}>*/}
-        {/*    Join Room*/}
-        {/*  </Text>*/}
-        {/*</View>*/}
-
-        {/*<View style={styles.connectButtonContainer}>*/}
-        {/*  <Text style={styles.toggleButton} onPress={this.joinRoom}>*/}
-        {/*    Join Room*/}
-        {/*  </Text>*/}
-        {/*</View>*/}
       </View>
     );
   }
@@ -333,6 +300,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginVertical: 10,
   },
+  alertText:{
+    fontSize:20,
+    textAlign:'center',
+    fontWeight:'500',
+    padding:5
+  }
 });
 
 export default Connect;
