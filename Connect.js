@@ -9,7 +9,7 @@ import {
   RTCView,
 } from 'react-native-webrtc';
 
-class Broadcast extends Component {
+class Connect extends Component {
 
   constructor(props) {
     super(props);
@@ -115,8 +115,8 @@ class Broadcast extends Component {
     console.log('captureMedia');
     mediaDevices
       .getUserMedia({
-        audio: true,
-        video: true,
+        audio: false,
+        video: false,
       })
       .then(stream => {
         this.gotStream(stream);
@@ -144,7 +144,7 @@ class Broadcast extends Component {
     if (!isStarted && typeof localStream !== 'undefined' && isChannelReady) {
       console.log('>>>>>> creating peer connection');
       this.createPeerConnection();
-      this.pc.addStream(localStream);
+      // this.pc.addStream(localStream);
       this.setState({
         isStarted: true,
       });
@@ -164,6 +164,11 @@ class Broadcast extends Component {
       this.pc.onicecandidate = this.handleIceCandidate;
       this.pc.onaddstream = this.handleRemoteStreamAdded;
       this.pc.onremovestream = this.handleRemoteStreamRemoved;
+      // this.pc.sdpConstraints.mandatory = {
+      //   OfferToReceiveAudio: false,
+      //   OfferToReceiveVideo: false,
+      // };
+
       console.log('Created RTCPeerConnnection');
     } catch (e) {
       console.log('Failed to create PeerConnection, exception: ' + e.message);
@@ -202,6 +207,7 @@ class Broadcast extends Component {
       //   offerToReceiveAudio: false,
       //   offerToReceiveVideo: false,
       // },
+
     }).then(this.setLocalAndSendMessage).catch(this.handleCreateOfferError);
   };
 
@@ -268,6 +274,9 @@ class Broadcast extends Component {
     console.log('Attempted to create or  join room', room);
   };
 
+  toggleUsername = () => {
+  };
+
   render() {
     console.log('this.state', this.state);
     // return null;
@@ -275,10 +284,7 @@ class Broadcast extends Component {
     return (
       <View style={styles.container}>
         <View style={styles.videoContainer}>
-          {
-            this.state.localStream !== null &&
-            <RTCView streamURL={this.state.localStream.toURL()} style={styles.selfView} />
-          }
+          {/*<RTCView streamURL={this.state.localStream} style={styles.selfView} />*/}
         </View>
 
         {this.state.socketConnected && (
@@ -287,17 +293,17 @@ class Broadcast extends Component {
           </TouchableHighlight>
         )}
 
-        {/*{this.state.remoteStream !== null && (*/}
-        {/*  <RTCView streamURL={this.state.remoteStream.toURL()} style={styles.selfView} />*/}
-        {/*)}*/}
+        {this.state.remoteStream !== null && (
+          <RTCView streamURL={this.state.remoteStream.toURL()} style={styles.selfView} />
+        )}
 
-        {/*<Text style={styles.toggleButton}> User : {this.state.userID}</Text>*/}
+        <Text style={styles.toggleButton}> User : {this.state.userID}</Text>
 
-        {/*<View style={styles.connectButtonContainer}>*/}
-        {/*  <Text onPress={this.toggleUsername} style={styles.toggleButton}>*/}
-        {/*    Toggle user*/}
-        {/*  </Text>*/}
-        {/*</View>*/}
+        <View style={styles.connectButtonContainer}>
+          <Text onPress={this.toggleUsername} style={styles.toggleButton}>
+            Toggle user
+          </Text>
+        </View>
 
         {/*<View style={styles.connectButtonContainer}>*/}
         {/*  <Text style={styles.toggleButton} onPress={this.joinRoom}>*/}
@@ -366,4 +372,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default Broadcast;
+export default Connect;

@@ -2,8 +2,7 @@ import React from 'react';
 import {Text, View, YellowBox} from 'react-native';
 import {createAppContainer, createBottomTabNavigator} from 'react-navigation';
 import Broadcast from './Broadcast';
-
-// import Connect from './Connect';
+import Connect from './Connect';
 
 class HomeScreen extends React.Component {
 
@@ -27,7 +26,7 @@ class HomeScreen extends React.Component {
 const TabNavigator = createBottomTabNavigator({
   Home: HomeScreen,
   Broadcast: Broadcast,
-  // Connect: Connect,
+  Connect: Connect,
 });
 
 export default createAppContainer(TabNavigator);
