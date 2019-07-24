@@ -1,7 +1,13 @@
 import React, {Component} from 'react';
 import {StyleSheet, Text, TouchableHighlight, View} from 'react-native';
 import io from 'socket.io-client';
-import {mediaDevices, RTCIceCandidate, RTCPeerConnection, RTCSessionDescription, RTCView} from 'react-native-webrtc';
+import {
+  mediaDevices,
+  RTCIceCandidate,
+  RTCPeerConnection,
+  RTCSessionDescription,
+  RTCView
+} from 'react-native-webrtc';
 
 class Broadcast extends Component {
   constructor(props) {
@@ -13,12 +19,14 @@ class Broadcast extends Component {
       socketURL: 'wss://localhost:3000',
       remoteStream: null,
       userID: 1,
-      socketConnected: false,
+      socketConnected: false
     };
   }
 
   componentDidMount(): void {
-    const configuration = {iceServers: [{url: 'stun:stun.l.google.com:19302'}]};
+    const configuration = {
+      iceServers: [{url: 'stun:stun.l.google.com:19302'}]
+    };
     this.pc = new RTCPeerConnection(configuration);
     this.pc.onicecandidate = this.onIceCandidate;
     this.pc.onaddstream = this.gotRemoteStream;
@@ -33,7 +41,7 @@ class Broadcast extends Component {
   onIceCandidate = event => {
     this.pc.addIceCandidate(new RTCIceCandidate(event.candidate));
     this.socket.send('candidate', {
-      candidate: event.candidate,
+      candidate: event.candidate
     });
   };
 
@@ -41,7 +49,7 @@ class Broadcast extends Component {
     console.log('got remote stream');
     // debugger;
     this.setState({
-      remoteStream: event.stream,
+      remoteStream: event.stream
     });
   };
 
@@ -55,7 +63,7 @@ class Broadcast extends Component {
           this.socket.emit('offer', {
             offer: offer,
             userID: this.state.userID,
-            remoteUserID: this.state.userID === 1 ? 2 : 1,
+            remoteUserID: this.state.userID === 1 ? 2 : 1
           });
         })
         .catch(error => {
@@ -95,7 +103,7 @@ class Broadcast extends Component {
         this.socket.emit('answer', {
           answer: answer,
           userID: this.state.userID,
-          remoteUserID: this.state.userID === 1 ? 2 : 1,
+          remoteUserID: this.state.userID === 1 ? 2 : 1
         });
       })
       .catch(e => {
@@ -118,7 +126,7 @@ class Broadcast extends Component {
   closeSocket = () => {
     console.log('closeSocket');
     this.setState({
-      remoteStream: null,
+      remoteStream: null
     });
     this.pc.close();
     this.pc.onicecandidate = null;
@@ -127,11 +135,13 @@ class Broadcast extends Component {
 
   connectSocket = () => {
     console.log('connectSocket');
-    this.socket = io.connect('http://192.168.8.103:3000', {transports: ['websocket']});
+    this.socket = io.connect('http://192.168.8.103:3000', {
+      transports: ['websocket']
+    });
     this.socket.on('connect', () => {
       this.loginUser();
       this.setState({
-        socketConnected: true,
+        socketConnected: true
       });
     });
     this.socket.on('login', () => this.loginUser());
@@ -147,7 +157,7 @@ class Broadcast extends Component {
     this.socket.emit('login', {
       type: 'login',
       userID: this.state.userID,
-      name: this.state.userID === 1 ? 'Sim7' : 'Sim8',
+      name: this.state.userID === 1 ? 'Sim7' : 'Sim8'
     });
   };
 
@@ -157,7 +167,7 @@ class Broadcast extends Component {
       mediaDevices
         .getUserMedia({
           audio: true,
-          video: true,
+          video: true
         })
         .then(stream => {
           resolve(stream);
@@ -176,11 +186,11 @@ class Broadcast extends Component {
       this.setState(
         {
           initialized: true,
-          stream: stream,
+          stream: stream
         },
         () => {
           this.createOffer();
-        },
+        }
       );
     });
   };
@@ -200,7 +210,7 @@ class Broadcast extends Component {
 
   toggleUsername = () => {
     this.setState({
-      userID: this.state.userID === 1 ? 2 : 1,
+      userID: this.state.userID === 1 ? 2 : 1
     });
   };
 
@@ -245,29 +255,29 @@ class Broadcast extends Component {
 const styles = StyleSheet.create({
   selfView: {
     width: 400,
-    height: 150,
+    height: 150
   },
   remoteView: {
     width: 200,
-    height: 150,
+    height: 150
   },
   container: {
     flex: 1,
     justifyContent: 'center',
-    backgroundColor: '#F5FCFF',
+    backgroundColor: '#F5FCFF'
   },
   welcome: {
     fontSize: 20,
     textAlign: 'center',
-    margin: 10,
+    margin: 10
   },
   listViewContainer: {
-    height: 150,
+    height: 150
   },
   button: {
     padding: 10,
     backgroundColor: 'blue',
-    margin: 5,
+    margin: 5
   },
   videoContainer: {
     alignItems: 'center',
@@ -275,13 +285,13 @@ const styles = StyleSheet.create({
     margin: 5,
     padding: 5,
     borderWidth: 1,
-    borderColor: 'gray',
+    borderColor: 'gray'
   },
   buttonText: {
-    textAlign: 'center',
+    textAlign: 'center'
   },
   toggleButton: {
-    fontSize: 15,
+    fontSize: 15
   },
   connectButtonContainer: {
     backgroundColor: 'white',
@@ -289,8 +299,8 @@ const styles = StyleSheet.create({
     borderColor: 'gray',
     padding: 5,
     alignItems: 'center',
-    marginVertical: 10,
-  },
+    marginVertical: 10
+  }
 });
 
 export default Broadcast;

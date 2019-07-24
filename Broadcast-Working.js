@@ -8,7 +8,7 @@ import {
   RTCIceCandidate,
   RTCPeerConnection,
   RTCSessionDescription,
-  RTCView,
+  RTCView
 } from 'react-native-webrtc';
 
 // const socket = io.connect('http://192.168.8.105:4443', {transports: ['websocket']});
@@ -21,12 +21,14 @@ class Broadcast extends Component {
       stream: null,
       connectionID: this.createUniqueID(),
       socketURL: 'wss://localhost:3000',
-      remoteStream: null,
+      remoteStream: null
     };
   }
 
   componentDidMount(): void {
-    const configuration = {iceServers: [{url: 'stun:stun.l.google.com:19302'}]};
+    const configuration = {
+      iceServers: [{url: 'stun:stun.l.google.com:19302'}]
+    };
     this.pc = new RTCPeerConnection(configuration);
     // this.pc.onicecandidate = this.gotIceCandidate;
     this.pc.onaddstream = this.gotRemoteStream;
@@ -47,8 +49,8 @@ class Broadcast extends Component {
         candidate: {
           candidate: event.candidate.candidate,
           sdpMid: event.candidate.sdpMid,
-          sdpMLineIndex: event.candidate.sdpMLineIndex,
-        },
+          sdpMLineIndex: event.candidate.sdpMLineIndex
+        }
       };
       console.log('WebRTC: sending onIceCandidate:', JSON.stringify(params));
       // this.socket.send(JSON.stringify(params));
@@ -59,7 +61,7 @@ class Broadcast extends Component {
     console.log('got remote stream');
     // debugger;
     this.setState({
-      remoteStream: event.stream,
+      remoteStream: event.stream
     });
   };
 
@@ -81,7 +83,7 @@ class Broadcast extends Component {
           let params = JSON.stringify({
             type: 'offer',
             offer: offer,
-            name: '123',
+            name: '123'
           });
           console.log('params', params);
           this.socket.send(params);
@@ -95,7 +97,7 @@ class Broadcast extends Component {
   loginUser = () => {
     let params = JSON.stringify({
       type: 'login',
-      name: 'afzal',
+      name: 'afzal'
     });
     console.log('params', params);
     this.socket.send(params);
@@ -167,7 +169,7 @@ class Broadcast extends Component {
         this.pc.setLocalDescription(answer);
         this.socket.send({
           type: 'answer',
-          answer: answer,
+          answer: answer
         });
       })
       .catch(e => console.log('err', e));
@@ -188,7 +190,7 @@ class Broadcast extends Component {
   handleLeave = () => {
     // connectedUser = null;
     this.setState({
-      remoteStream: null,
+      remoteStream: null
     });
     this.pc.close();
     this.pc.onicecandidate = null;
@@ -209,7 +211,7 @@ class Broadcast extends Component {
       mediaDevices
         .getUserMedia({
           audio: true,
-          video: true,
+          video: true
         })
         .then(stream => {
           resolve(stream);
@@ -231,7 +233,7 @@ class Broadcast extends Component {
       this.pc.addStream(stream);
       this.setState({
         initialized: true,
-        stream: stream,
+        stream: stream
       });
       // this.createOffer();
       // this.startPeerConnection(stream);
@@ -281,39 +283,39 @@ class Broadcast extends Component {
 const styles = StyleSheet.create({
   selfView: {
     width: 400,
-    height: 150,
+    height: 150
   },
   remoteView: {
     width: 200,
-    height: 150,
+    height: 150
   },
   container: {
     flex: 1,
     justifyContent: 'center',
-    backgroundColor: '#F5FCFF',
+    backgroundColor: '#F5FCFF'
   },
   welcome: {
     fontSize: 20,
     textAlign: 'center',
-    margin: 10,
+    margin: 10
   },
   listViewContainer: {
-    height: 150,
+    height: 150
   },
   button: {
     padding: 10,
     backgroundColor: 'blue',
-    margin: 5,
+    margin: 5
   },
   videoContainer: {
     alignItems: 'center',
     backgroundColor: 'gray',
     margin: 5,
-    padding: 5,
+    padding: 5
   },
   buttonText: {
-    textAlign: 'center',
-  },
+    textAlign: 'center'
+  }
 });
 
 export default Broadcast;

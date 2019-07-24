@@ -5,11 +5,10 @@ import {
   RTCIceCandidate,
   RTCPeerConnection,
   RTCSessionDescription,
-  RTCView,
+  RTCView
 } from 'react-native-webrtc';
 
 class Connect extends Component {
-
   constructor(props) {
     super(props);
     this.state = {
@@ -21,7 +20,7 @@ class Connect extends Component {
       remoteStream: null,
       turnReady: null,
       room: 'foo',
-      socketURL:'http://192.168.8.105:3000'
+      socketURL: 'http://192.168.8.105:3000'
     };
   }
 
@@ -34,7 +33,7 @@ class Connect extends Component {
     console.log('connectSocket');
 
     this.socket = io.connect(this.state.socketURL, {
-      transports: ['websocket'],
+      transports: ['websocket']
     });
 
     this.socket.on('connect', () => {
@@ -44,7 +43,7 @@ class Connect extends Component {
     this.socket.on('created', room => {
       console.log('Created room ' + room);
       this.setState({
-        isInitiator: true,
+        isInitiator: true
       });
     });
 
@@ -56,14 +55,14 @@ class Connect extends Component {
       console.log('Another peer made a request to join room ' + room);
       console.log('This peer is the initiator of room ' + room + '!');
       this.setState({
-        isChannelReady: true,
+        isChannelReady: true
       });
     });
 
     this.socket.on('joined', room => {
       console.log('joined: ' + room);
       this.setState({
-        isChannelReady: true,
+        isChannelReady: true
       });
       this.maybeStart();
     });
@@ -90,7 +89,7 @@ class Connect extends Component {
       } else if (message.type === 'candidate' && isStarted) {
         let candidate = new RTCIceCandidate({
           sdpMLineIndex: message.label,
-          candidate: message.candidate,
+          candidate: message.candidate
         });
         this.pc.addIceCandidate(candidate);
       } else if (message === 'bye' && isStarted) {
@@ -99,7 +98,6 @@ class Connect extends Component {
     });
   };
 
-  ////////////////////////////////////////////////
   sendMessage = message => {
     console.log('Client sending message: ', message);
     this.socket.emit('message', message);
@@ -114,7 +112,6 @@ class Connect extends Component {
     }
   };
 
-  // miscellaneous
   maybeStart = () => {
     let {isStarted, localStream, isChannelReady, isInitiator} = this.state;
     console.log('>>>>>>> maybeStart() ', isStarted, localStream, isChannelReady);
@@ -123,7 +120,7 @@ class Connect extends Component {
       this.createPeerConnection();
       // this.pc.addStream(localStream);
       this.setState({
-        isStarted: true,
+        isStarted: true
       });
       console.log('isInitiator', isInitiator);
       if (isInitiator) {
@@ -132,11 +129,11 @@ class Connect extends Component {
     }
   };
 
-  /////////////////////////////////////////////////////////
-
   createPeerConnection = () => {
     try {
-      const configuration = {iceServers: [{url: 'stun:stun.l.google.com:19302'}]};
+      const configuration = {
+        iceServers: [{url: 'stun:stun.l.google.com:19302'}]
+      };
       this.pc = new RTCPeerConnection(configuration);
       this.pc.onicecandidate = this.handleIceCandidate;
       this.pc.onaddstream = this.handleRemoteStreamAdded;
@@ -155,34 +152,40 @@ class Connect extends Component {
         type: 'candidate',
         label: event.candidate.sdpMLineIndex,
         id: event.candidate.sdpMid,
-        candidate: event.candidate.candidate,
+        candidate: event.candidate.candidate
       });
     } else {
       console.log('End of candidates.');
     }
   };
 
-  handleCreateOfferError = event => {
-    console.log('createOffer() error: ', event);
-  };
-
   doCall = () => {
     console.log('Sending offer to peer');
-    this.pc.createOffer({
-      offerToReceiveAudio: true,
-      offerToReceiveVideo: true,
-    }).then(this.setLocalAndSendMessage).catch(this.handleCreateOfferError);
+    this.pc
+      .createOffer({
+        offerToReceiveAudio: true,
+        offerToReceiveVideo: true
+      })
+      .then(this.setLocalAndSendMessage)
+      .catch(this.handleCreateOfferError);
   };
 
   doAnswer = () => {
     console.log('Sending answer to peer.');
-    this.pc.createAnswer().then(this.setLocalAndSendMessage).catch(this.onCreateSessionDescriptionError);
+    this.pc
+      .createAnswer()
+      .then(this.setLocalAndSendMessage)
+      .catch(this.onCreateSessionDescriptionError);
   };
 
   setLocalAndSendMessage = sessionDescription => {
     this.pc.setLocalDescription(sessionDescription);
     console.log('setLocalAndSendMessage sending message', sessionDescription);
     this.sendMessage(sessionDescription);
+  };
+
+  handleCreateOfferError = event => {
+    console.log('createOffer() error: ', event);
   };
 
   onCreateSessionDescriptionError = error => {
@@ -192,7 +195,7 @@ class Connect extends Component {
   handleRemoteStreamAdded = event => {
     console.log('Remote stream added.');
     this.setState({
-      remoteStream: event.stream,
+      remoteStream: event.stream
     });
   };
 
@@ -210,21 +213,20 @@ class Connect extends Component {
     console.log('Session terminated.');
     // this.stop();
 
-    if(!this.state.isInitiator) {
+    if (!this.state.isInitiator) {
       this.stop();
     }
     // if isinitator
     this.setState({
-      remoteStream:null,
-      isStarted: false,
+      remoteStream: null,
+      isStarted: false
     });
-
   };
 
   stop = () => {
     this.setState({
-      localStream:null,
-      isStarted: false,
+      localStream: null,
+      isStarted: false
     });
     this.pc.close();
     this.pc = null;
@@ -243,7 +245,7 @@ class Connect extends Component {
       <View style={styles.container}>
         {this.state.remoteStream !== null ? (
           <RTCView streamURL={this.state.remoteStream.toURL()} style={styles.selfView} />
-          ): (
+        ) : (
           <Text style={styles.alertText}>Remote Video will appear here once ready</Text>
         )}
       </View>
@@ -254,29 +256,29 @@ class Connect extends Component {
 const styles = StyleSheet.create({
   selfView: {
     width: 400,
-    height: 150,
+    height: 150
   },
   remoteView: {
     width: 200,
-    height: 150,
+    height: 150
   },
   container: {
     flex: 1,
     justifyContent: 'center',
-    backgroundColor: '#F5FCFF',
+    backgroundColor: '#F5FCFF'
   },
   welcome: {
     fontSize: 20,
     textAlign: 'center',
-    margin: 10,
+    margin: 10
   },
   listViewContainer: {
-    height: 150,
+    height: 150
   },
   button: {
     padding: 10,
     backgroundColor: 'blue',
-    margin: 5,
+    margin: 5
   },
   videoContainer: {
     alignItems: 'center',
@@ -284,13 +286,13 @@ const styles = StyleSheet.create({
     margin: 5,
     padding: 5,
     borderWidth: 1,
-    borderColor: 'gray',
+    borderColor: 'gray'
   },
   buttonText: {
-    textAlign: 'center',
+    textAlign: 'center'
   },
   toggleButton: {
-    fontSize: 15,
+    fontSize: 15
   },
   connectButtonContainer: {
     backgroundColor: 'white',
@@ -298,13 +300,13 @@ const styles = StyleSheet.create({
     borderColor: 'gray',
     padding: 5,
     alignItems: 'center',
-    marginVertical: 10,
+    marginVertical: 10
   },
-  alertText:{
-    fontSize:20,
-    textAlign:'center',
-    fontWeight:'500',
-    padding:5
+  alertText: {
+    fontSize: 20,
+    textAlign: 'center',
+    fontWeight: '500',
+    padding: 5
   }
 });
 

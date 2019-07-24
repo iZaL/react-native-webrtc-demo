@@ -5,10 +5,15 @@ import Broadcast from './Broadcast';
 import Connect from './Connect';
 
 class HomeScreen extends React.Component {
-
   render() {
     return (
-      <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
+      <View
+        style={{
+          flex: 1,
+          justifyContent: 'center',
+          alignItems: 'center'
+        }}
+      >
         <Text>Home!</Text>
       </View>
     );
@@ -18,7 +23,7 @@ class HomeScreen extends React.Component {
 const TabNavigator = createBottomTabNavigator({
   Home: HomeScreen,
   Broadcast: Broadcast,
-  Connect: Connect,
+  Connect: Connect
 });
 
 export default createAppContainer(TabNavigator);
